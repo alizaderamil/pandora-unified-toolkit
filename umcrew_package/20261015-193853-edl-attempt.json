@@ -1,0 +1,22 @@
+{
+  "time": "2026-10-15T19:38:53.689089",
+  "action": "try_edl",
+  "results": {
+    "oem_edl": {
+      "rc": 1,
+      "output": "FAILED (remote: 'Error Invalid Parameter')\nfastboot: error: Command failed"
+    },
+    "reboot_edl": {
+      "rc": 1,
+      "output": "fastboot: usage: unknown reboot target edl"
+    },
+    "reboot_emergency": {
+      "rc": 1,
+      "output": "fastboot: usage: unknown reboot target emergency"
+    },
+    "oem_reboot_edl": {
+      "rc": 1,
+      "output": "FAILED (remote: 'unknown command')\nfastboot: error: Command failed"
+    }
+  }
+}

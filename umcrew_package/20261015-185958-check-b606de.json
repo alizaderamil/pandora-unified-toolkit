@@ -1,0 +1,22 @@
+{
+  "app": "Pandora Mini 0.1",
+  "time": "2026-10-15T18:59:58+04:00",
+  "action": "check",
+  "ok": true,
+  "values": {
+    "product": "pandora",
+    "unlocked": "no",
+    "secure": "yes",
+    "current-slot": "a",
+    "slot-successful:a": "yes",
+    "slot-unbootable:a": "yes",
+    "slot-retry-count:a": "4",
+    "slot-successful:b": "no",
+    "slot-unbootable:b": "yes",
+    "slot-retry-count:b": "0",
+    "anti": "1",
+    "snapshot-update-status": "none",
+    "security-patch-level": "2026-10-01"
+  },
+  "unsupported": {}
+}

@@ -1,0 +1,451 @@
+{
+  "time": "2026-10-15T20:13:24.619681",
+  "results": {
+    "getvar:all": {
+      "rc": 0,
+      "out": "(bootloader) crc:1\n(bootloader) token:VQEBJQEQGdU6x2Z35UYa30b5ehbdvQMHcGFuZG9yYQIIAAAEasOr5\n(bootloader) snapshot-update-status:none\n(bootloader) security-patch-level:2026-10-01\n(bootloader) awu:yes\n(bootloader) parallel-download-flash:yes\n(bootloader) cpuid:0x0000046ac3abe549\n(bootloader) hw-revision:20000\n(bootloader) unlocked:no\n(bootloader) off-mode-charge:1\n(bootloader) charger-screen-enabled:1\n(bootloader) battery-soc-ok:yes\n(bootloader) battery-voltage:4385\n(bootloader) version-baseband:\n(bootloader) version-bootloader:\n(bootloader) erase-block-size: 0x1000\n(bootloader) logical-block-size: 0x1000\n(bootloader) variant:SM8 UFS\n(bootloader) partition-type:persist:raw\n(bootloader) partition-size:persist: 0x2E00000\n(bootloader) partition-type:fsc:raw\n(bootloader) partition-size:fsc: 0x20000\n(bootloader) partition-type:fsg:raw\n(bootloader) partition-size:fsg: 0x800000\n(bootloader) partition-type:modemst2:raw\n(bootloader) partition-size:modemst2: 0x800000\n(bootloader) partition-type:modemst1:raw\n(bootloader) partition-size:modemst1: 0x800000\n(bootloader) partition-type:bk51:raw\n(bootloader) partition-size:bk51: 0xE0000\n(bootloader) partition-type:ALIGN_TO_128K_2:raw\n(bootloader) partition-size:ALIGN_TO_128K_2: 0x1A000\n(bootloader) partition-type:dpm:raw\n(bootloader) partition-size:dpm: 0x2000\n(bootloader) partition-type:xbl_sc_logs:raw\n(bootloader) partition-size:xbl_sc_logs: 0x20000\n(bootloader) partition-type:xbl_sc_test_mode:raw\n(bootloader) partition-size:xbl_sc_test_mode: 0x10000\n(bootloader) partition-type:spunvm:raw\n(bootloader) partition-size:spunvm: 0x2000000\n(bootloader) partition-type:tzsc:raw\n(bootloader) partition-size:tzsc: 0x20000\n(bootloader) partition-type:connsec:raw\n(bootloader) partition-size:connsec: 0x20000\n(bootloader) partition-type:mdcompress:raw\n(bootloader) partition-size:mdcompress: 0x1400000\n(bootloader) partition-type:secdata:raw\n(bootloader) partition-size:secdata: 0x8000\n(bootloader) partition-type:uefivarstore:raw\n(bootloader) partition-size:uefivarstore: 0x80000\n(bootloader) partition-type:storsec:raw\n(bootloader) partition-size:storsec: 0x20000\n(bootloader) partition-type:gsort:raw\n(bootloader) partition-size:gsort: 0x1000000\n(bootloader) partition-type:toolsfv:raw\n(bootloader) partition-size:toolsfv: 0x100000\n(bootloader) partition-type:efisp:raw\n(bootloader) partition-size:efisp: 0x300000\n(bootloader) partition-type:pvmfw_signed_b:raw\n(bootloader) partition-size:pvmfw_signed_b: 0x100000\n(bootloader) partition-type:secretkeeper_b:raw\n(bootloader) partition-size:secretkeeper_b: 0x800000\n(bootloader) partition-type:tz_qti_config_b:raw\n(bootloader) partition-size:tz_qti_config_b: 0x32000\n(bootloader) partition-type:dcp_b:raw\n(bootloader) partition-size:dcp_b: 0x800000\n(bootloader) partition-type:hyp_ac_config_b:raw\n(bootloader) partition-size:hyp_ac_config_b: 0x40000\n(bootloader) partition-type:tz_ac_config_b:raw\n(bootloader) partition-size:tz_ac_config_b: 0x40000\n(bootloader) partition-type:pdp_cdb_b:raw\n(bootloader) partition-size:pdp_cdb_b: 0x20000\n(bootloader) partition-type:pdp_b:raw\n(bootloader) partition-size:pdp_b: 0x80000\n(bootloader) partition-type:soccp_dcd_b:raw\n(bootloader) partition-size:soccp_dcd_b: 0x6000\n(bootloader) partition-type:soccp_debug_b:raw\n(bootloader) partition-size:soccp_debug_b: 0x80000\n(bootloader) partition-type:soccp_b:raw\n(bootloader) partition-size:soccp_b: 0x800000\n(bootloader) partition-type:pvmfw_b:raw\n(bootloader) partition-size:pvmfw_b: 0x100000\n(bootloader) partition-type:cpucp_dtb_b:raw\n(bootloader) partition-size:cpucp_dtb_b: 0x10000\n(bootloader) partition-type:init_boot_b:raw\n(bootloader) partition-size:init_boot_b: 0x800000\n(bootloader) partition-type:xbl_ramdump_b:raw\n(bootloader) partition-size:xbl_ramdump_b: 0x200000\n(bootloader) partition-type:recovery_b:raw\n(bootloader) partition-size:recovery_b: 0x6400000\n(bootloader) partition-type:qweslicstore_b:raw\n(bootloader) partition-size:qweslicstore_b: 0x40000\n(bootloader) partition-type:vendor_boot_b:raw\n(bootloader) partition-size:vendor_boot_b: 0x6000000\n(bootloader) partition-type:featenabler_b:raw\n(bootloader) partition-size:featenabler_b: 0x20000\n(bootloader) partition-type:cpucp_b:raw\n(bootloader) partition-size:cpucp_b: 0x100000\n(bootloader) partition-type:qtvm_dtbo_b:raw\n(bootloader) partition-size:qtvm_dtbo_b: 0x500000\n(bootloader) partition-type:shrm_b:raw\n(bootloader) partition-size:shrm_b: 0x40000\n(bootloader) partition-type:imagefv_b:raw\n(bootloader) partition-size:imagefv_b: 0x3000000\n(bootloader) partition-type:uefisecapp_b:raw\n(bootloader) partition-size:uefisecapp_b: 0x200000\n(bootloader) partition-type:dtbo_b:raw\n(bootloader) partition-size:dtbo_b: 0x2000000\n(bootloader) partition-type:vbmeta_b:raw\n(bootloader) partition-size:vbmeta_b: 0x20000\n(bootloader) partition-type:qupfw_b:raw\n(bootloader) partition-size:qupfw_b: 0x20000\n(bootloader) partition-type:devcfg_b:raw\n(bootloader) partition-size:devcfg_b: 0x40000\n(bootloader) partition-type:boot_b:raw\n(bootloader) partition-size:boot_b: 0x6000000\n(bootloader) partition-type:spuservice_b:raw\n(bootloader) partition-size:spuservice_b: 0x20000\n(bootloader) partition-type:keymaster_b:raw\n(bootloader) partition-size:keymaster_b: 0xA00000\n(bootloader) partition-type:dsp_b:raw\n(bootloader) partition-size:dsp_b: 0x4A00000\n(bootloader) partition-type:abl_b:raw\n(bootloader) partition-size:abl_b: 0x800000\n(bootloader) partition-type:bluetooth_b:raw\n(bootloader) partition-size:bluetooth_b: 0x800000\n(bootloader) partition-type:modemfirmware_b:raw\n(bootloader) partition-size:modemfirmware_b: 0xC800000\n(bootloader) partition-type:modem_b:raw\n(bootloader) partition-size:modem_b: 0xA000000\n(bootloader) partition-type:hyp_b:raw\n(bootloader) partition-size:hyp_b: 0x800000\n(bootloader) partition-type:tz_b:raw\n(bootloader) partition-size:tz_b: 0x800000\n(bootloader) partition-type:aop_config_b:raw\n(bootloader) partition-size:aop_config_b: 0x80000\n(bootloader) partition-type:aop_b:raw\n(bootloader) partition-size:aop_b: 0x80000\n(bootloader) partition-type:idmanager_b:raw\n(bootloader) partition-size:idmanager_b: 0x80000\n(bootloader) partition-type:uefi_b:raw\n(bootloader) partition-size:uefi_b: 0x500000\n(bootloader) partition-type:pvmfw_signed_a:raw\n(bootloader) partition-size:pvmfw_signed_a: 0x100000\n(bootloader) partition-type:secretkeeper_a:raw\n(bootloader) partition-size:secretkeeper_a: 0x800000\n(bootloader) partition-type:tz_qti_config_a:raw\n(bootloader) partition-size:tz_qti_config_a: 0x32000\n(bootloader) partition-type:dcp_a:raw\n(bootloader) partition-size:dcp_a: 0x800000\n(bootloader) partition-type:hyp_ac_config_a:raw\n(bootloader) partition-size:hyp_ac_config_a: 0x40000\n(bootloader) partition-type:tz_ac_config_a:raw\n(bootloader) partition-size:tz_ac_config_a: 0x40000\n(bootloader) partition-type:pdp_cdb_a:raw\n(bootloader) partition-size:pdp_cdb_a: 0x20000\n(bootloader) partition-type:pdp_a:raw\n(bootloader) partition-size:pdp_a: 0x80000\n(bootloader) partition-type:soccp_dcd_a:raw\n(bootloader) partition-size:soccp_dcd_a: 0x6000\n(bootloader) partition-type:soccp_debug_a:raw\n(bootloader) partition-size:soccp_debug_a: 0x80000\n(bootloader) partition-type:soccp_a:raw\n(bootloader) partition-size:soccp_a: 0x800000\n(bootloader) partition-type:pvmfw_a:raw\n(bootloader) partition-size:pvmfw_a: 0x100000\n(bootloader) partition-type:cpucp_dtb_a:raw\n(bootloader) partition-size:cpucp_dtb_a: 0x10000\n(bootloader) partition-type:init_boot_a:raw\n(bootloader) partition-size:init_boot_a: 0x800000\n(bootloader) partition-type:xbl_ramdump_a:raw\n(bootloader) partition-size:xbl_ramdump_a: 0x200000\n(bootloader) partition-type:recovery_a:raw\n(bootloader) partition-size:recovery_a: 0x6400000\n(bootloader) partition-type:qweslicstore_a:raw\n(bootloader) partition-size:qweslicstore_a: 0x40000\n(bootloader) partition-type:qmcs:raw\n(bootloader) partition-size:qmcs: 0x1E00000\n(bootloader) partition-type:vendor_boot_a:raw\n(bootloader) partition-size:vendor_boot_a: 0x6000000\n(bootloader) partition-type:featenabler_a:raw\n(bootloader) partition-size:featenabler_a: 0x20000\n(bootloader) partition-type:cpucp_a:raw\n(bootloader) partition-size:cpucp_a: 0x100000\n(bootloader) partition-type:qtvm_dtbo_a:raw\n(bootloader) partition-size:qtvm_dtbo_a: 0x500000\n(bootloader) partition-type:shrm_a:raw\n(bootloader) partition-size:shrm_a: 0x40000\n(bootloader) partition-type:imagefv_a:raw\n(bootloader) partition-size:imagefv_a: 0x3000000\n(bootloader) partition-type:uefisecapp_a:raw\n(bootloader) partition-size:uefisecapp_a: 0x200000\n(bootloader) partition-type:dtbo_a:raw\n(bootloader) partition-size:dtbo_a: 0x2000000\n(bootloader) partition-type:vbmeta_a:raw\n(bootloader) partition-size:vbmeta_a: 0x20000\n(bootloader) partition-type:qupfw_a:raw\n(bootloader) partition-size:qupfw_a: 0x20000\n(bootloader) partition-type:devcfg_a:raw\n(bootloader) partition-size:devcfg_a: 0x40000\n(bootloader) partition-type:boot_a:raw\n(bootloader) partition-size:boot_a: 0x6000000\n(bootloader) partition-type:spuservice_a:raw\n(bootloader) partition-size:spuservice_a: 0x20000\n(bootloader) partition-type:keymaster_a:raw\n(bootloader) partition-size:keymaster_a: 0xA00000\n(bootloader) partition-type:dsp_a:raw\n(bootloader) partition-size:dsp_a: 0x4A00000\n(bootloader) partition-type:abl_a:raw\n(bootloader) partition-size:abl_a: 0x800000\n(bootloader) partition-type:bluetooth_a:raw\n(bootloader) partition-size:bluetooth_a: 0x800000\n(bootloader) partition-type:modemfirmware_a:raw\n(bootloader) partition-size:modemfirmware_a: 0xC800000\n(bootloader) partition-type:modem_a:raw\n(bootloader) partition-size:modem_a: 0xA000000\n(bootloader) partition-type:hyp_a:raw\n(bootloader) partition-size:hyp_a: 0x800000\n(bootloader) partition-type:tz_a:raw\n(bootloader) partition-size:tz_a: 0x800000\n(bootloader) partition-type:aop_config_a:raw\n(bootloader) partition-size:aop_config_a: 0x80000\n(bootloader) partition-type:aop_a:raw\n(bootloader) partition-size:aop_a: 0x80000\n(bootloader) partition-type:idmanager_a:raw\n(bootloader) partition-size:idmanager_a: 0x80000\n(bootloader) partition-type:uefi_a:raw\n(bootloader) partition-size:uefi_a: 0x500000\n(bootloader) partition-type:ddr:raw\n(bootloader) partition-size:ddr: 0x200000\n(bootloader) partition-type:cdt:raw\n(bootloader) partition-size:cdt: 0x20000\n(bootloader) partition-type:ALIGN_TO_128K_1:raw\n(bootloader) partition-size:ALIGN_TO_128K_1: 0x1A000\n(bootloader) partition-type:xbl_ac_config_b:raw\n(bootloader) partition-size:xbl_ac_config_b: 0x20000\n(bootloader) partition-type:tme_config_b:raw\n(bootloader) partition-size:tme_config_b: 0x20000\n(bootloader) partition-type:tme_fw_b:raw\n(bootloader) partition-size:tme_fw_b: 0x100000\n(bootloader) partition-type:tme_seq_patch_b:raw\n(bootloader) partition-size:tme_seq_patch_b: 0x2000\n(bootloader) partition-type:apdpb:raw\n(bootloader) partition-size:apdpb: 0x40000\n(bootloader) partition-type:multiimgoem_b:raw\n(bootloader) partition-size:multiimgoem_b: 0x8000\n(bootloader) partition-type:multiimgqti_b:raw\n(bootloader) partition-size:multiimgqti_b: 0x8000\n(bootloader) partition-type:xbl_config_b:raw\n(bootloader) partition-size:xbl_config_b: 0x80000\n(bootloader) partition-type:xbl_b:raw\n(bootloader) partition-size:xbl_b: 0x800000\n(bootloader) partition-type:xbl_ac_config_a:raw\n(bootloader) partition-size:xbl_ac_config_a: 0x20000\n(bootloader) partition-type:tme_config_a:raw\n(bootloader) partition-size:tme_config_a: 0x20000\n(bootloader) partition-type:tme_fw_a:raw\n(bootloader) partition-size:tme_fw_a: 0x100000\n(bootloader) partition-type:tme_seq_patch_a:raw\n(bootloader) partition-size:tme_seq_patch_a: 0x2000\n(bootloader) partition-type:apdp:raw\n(bootloader) partition-size:apdp: 0x40000\n(bootloader) partition-type:multiimgoem_a:raw\n(bootloader) partition-size:multiimgoem_a: 0x8000\n(bootloader) partition-type:multiimgqti_a:raw\n(bootloader) partition-size:multiimgqti_a: 0x8000\n(bootloader) partition-type:xbl_config_a:raw\n(bootloader) partition-size:xbl_config_a: 0x80000\n(bootloader) partition-type:xbl_a:raw\n(bootloader) partition-size:xbl_a: 0x800000\n(bootloader) partition-type:userdata:f2fs\n(bootloader) partition-size:userdata: 0x774C1FB000\n(bootloader) partition-type:super:raw\n(bootloader) partition-size:super: 0x320000000\n(bootloader) partition-type:rescue:raw\n(bootloader) partition-size:rescue: 0x8000000\n(bootloader) partition-type:mtdblk:raw\n(bootloader) partition-size:mtdblk: 0x2000000\n(bootloader) partition-type:mem:raw\n(bootloader) partition-size:mem: 0x400000\n(bootloader) partition-type:opconfig:raw\n(bootloader) partition-size:opconfig: 0x1400000\n(bootloader) partition-type:rawdump:raw\n(bootloader) partition-size:rawdump: 0x12C00000\n(bootloader) partition-type:oops:raw\n(bootloader) partition-size:oops: 0x1000000\n(bootloader) partition-type:blackbox:raw\n(bootloader) partition-size:blackbox: 0xB400000\n(bootloader) partition-type:charger:raw\n(bootloader) partition-size:charger: 0x100000\n(bootloader) partition-type:bk07:raw\n(bootloader) partition-size:bk07: 0x4BE000\n(bootloader) partition-type:vbmeta_system_b:raw\n(bootloader) partition-size:vbmeta_system_b: 0x20000\n(bootloader) partition-type:vbmeta_system_a:raw\n(bootloader) partition-size:vbmeta_system_a: 0x20000\n(bootloader) partition-type:devinfo:raw\n(bootloader) partition-size:devinfo: 0x2000\n(bootloader) partition-type:metadata:raw\n(bootloader) partition-size:metadata: 0x4000000\n(bootloader) partition-type:mbnconfig:raw\n(bootloader) partition-size:mbnconfig: 0x2000000\n(bootloader) partition-type:vm-bootsys_b:raw\n(bootloader) partition-size:vm-bootsys_b: 0x2800000\n(bootloader) partition-type:vm-bootsys_a:raw\n(bootloader) partition-size:vm-bootsys_a: 0x2800000\n(bootloader) partition-type:vm-persist:raw\n(bootloader) partition-size:vm-persist: 0x7400000\n(bootloader) partition-type:ffu:raw\n(bootloader) partition-size:ffu: 0x800000\n(bootloader) partition-type:logfs:raw\n(bootloader) partition-size:logfs: 0x800000\n(bootloader) partition-type:bk05:raw\n(bootloader) partition-size:bk05: 0x800000\n(bootloader) partition-type:misc:raw\n(bootloader) partition-size:misc: 0x400000\n(bootloader) partition-type:countrycode_b:raw\n(bootloader) partition-size:countrycode_b: 0x100000\n(bootloader) partition-type:countrycode_a:raw\n(bootloader) partition-size:countrycode_a: 0x100000\n(bootloader) partition-type:frp:raw\n(bootloader) partition-size:frp: 0x80000\n(bootloader) partition-type:keystore:raw\n(bootloader) partition-size:keystore: 0x80000\n(bootloader) partition-type:bk04:raw\n(bootloader) partition-size:bk04: 0x80000\n(bootloader) partition-type:bk03:raw\n(bootloader) partition-size:bk03: 0x40000\n(bootloader) partition-type:secinfo:raw\n(bootloader) partition-size:secinfo: 0x20000\n(bootloader) partition-type:bk01:raw\n(bootloader) partition-size:bk01: 0x8000\n(bootloader) partition-type:dbg:raw\n(bootloader) partition-size:dbg: 0x8000\n(bootloader) partition-type:ssd:raw\n(bootloader) partition-size:ssd: 0x8000\n(bootloader) partition-type:switch:raw\n(bootloader) partition-size:switch: 0x2000\n(bootloader) has-slot:modem:yes\n(bootloader) has-slot:system:no\n(bootloader) current-slot:a\n(bootloader) has-slot:boot:yes\n(bootloader) slot-retry-count:b:0\n(bootloader) slot-unbootable:b:yes\n(bootloader) slot-successful:b:no\n(bootloader) slot-retry-count:a:4\n(bootloader) slot-unbootable:a:yes\n(bootloader) slot-successful:a:yes\n(bootloader) slot-count:2\n(bootloader) anti:1\n(bootloader) dpstatus:0x20\n(bootloader) secure:yes\n(bootloader) serialno:d5835558\n(bootloader) product:pandora\n(bootloader) is-userspace:no\n(bootloader) max-download-size:805306368\n(bootloader) kernel:uefi\nall: \nFinished. Total time: 0.055s"
+    },
+    "getvar:version": {
+      "rc": 0,
+      "out": "getvar:version                                     FAILED (remote: 'GetVar Variable Not found')\nFinished. Total time: 0.004s"
+    },
+    "getvar:version-bootloader": {
+      "rc": 0,
+      "out": "version-bootloader: \nFinished. Total time: 0.003s"
+    },
+    "getvar:version-baseband": {
+      "rc": 0,
+      "out": "version-baseband: \nFinished. Total time: 0.003s"
+    },
+    "getvar:secure": {
+      "rc": 0,
+      "out": "secure: yes\nFinished. Total time: 0.004s"
+    },
+    "getvar:unlocked": {
+      "rc": 0,
+      "out": "unlocked: no\nFinished. Total time: 0.003s"
+    },
+    "getvar:product": {
+      "rc": 0,
+      "out": "product: pandora\nFinished. Total time: 0.004s"
+    },
+    "getvar:serialno": {
+      "rc": 0,
+      "out": "serialno: d5835558\nFinished. Total time: 0.004s"
+    },
+    "getvar:variant": {
+      "rc": 0,
+      "out": "variant: SM8 UFS\nFinished. Total time: 0.003s"
+    },
+    "getvar:max-download-size": {
+      "rc": 0,
+      "out": "max-download-size: 805306368\nFinished. Total time: 0.005s"
+    },
+    "getvar:partition-type": {
+      "rc": 0,
+      "out": "getvar:partition-type                              FAILED (remote: 'GetVar Variable Not found')\nFinished. Total time: 0.006s"
+    },
+    "getvar:partition-size": {
+      "rc": 0,
+      "out": "getvar:partition-size                              FAILED (remote: 'GetVar Variable Not found')\nFinished. Total time: 0.005s"
+    },
+    "getvar:slot-count": {
+      "rc": 0,
+      "out": "slot-count: 2\nFinished. Total time: 0.004s"
+    },
+    "getvar:current-slot": {
+      "rc": 0,
+      "out": "current-slot: a\nFinished. Total time: 0.005s"
+    },
+    "getvar:has-slot": {
+      "rc": 0,
+      "out": "getvar:has-slot                                    FAILED (remote: 'GetVar Variable Not found')\nFinished. Total time: 0.004s"
+    },
+    "getvar:slot-successful:a": {
+      "rc": 0,
+      "out": "slot-successful:a: yes\nFinished. Total time: 0.005s"
+    },
+    "getvar:slot-successful:b": {
+      "rc": 0,
+      "out": "slot-successful:b: no\nFinished. Total time: 0.004s"
+    },
+    "getvar:slot-unbootable:a": {
+      "rc": 0,
+      "out": "slot-unbootable:a: yes\nFinished. Total time: 0.005s"
+    },
+    "getvar:slot-unbootable:b": {
+      "rc": 0,
+      "out": "slot-unbootable:b: yes\nFinished. Total time: 0.005s"
+    },
+    "getvar:slot-retry-count:a": {
+      "rc": 0,
+      "out": "slot-retry-count:a: 4\nFinished. Total time: 0.006s"
+    },
+    "getvar:slot-retry-count:b": {
+      "rc": 0,
+      "out": "slot-retry-count:b: 0\nFinished. Total time: 0.004s"
+    },
+    "getvar:anti": {
+      "rc": 0,
+      "out": "anti: 1\nFinished. Total time: 0.004s"
+    },
+    "getvar:token": {
+      "rc": 0,
+      "out": "token: VQEBJQEQGdU6x2Z35UYa30b5ehbdvQMHcGFuZG9yYQIIAAAEasOr5Uk\nFinished. Total time: 0.003s"
+    },
+    "getvar:crc": {
+      "rc": 0,
+      "out": "crc: 1\nFinished. Total time: 0.003s"
+    },
+    "getvar:cpuid": {
+      "rc": 0,
+      "out": "cpuid: 0x0000046ac3abe549\nFinished. Total time: 0.003s"
+    },
+    "getvar:hw-revision": {
+      "rc": 0,
+      "out": "hw-revision: 20000\nFinished. Total time: 0.003s"
+    },
+    "getvar:dpstatus": {
+      "rc": 0,
+      "out": "dpstatus: 0x20\nFinished. Total time: 0.004s"
+    },
+    "getvar:awu": {
+      "rc": 0,
+      "out": "awu: yes\nFinished. Total time: 0.003s"
+    },
+    "getvar:snapshot-update-status": {
+      "rc": 0,
+      "out": "snapshot-update-status: none\nFinished. Total time: 0.003s"
+    },
+    "getvar:battery-voltage": {
+      "rc": 0,
+      "out": "battery-voltage: 4384\nFinished. Total time: 0.003s"
+    },
+    "getvar:battery-soc-ok": {
+      "rc": 0,
+      "out": "battery-soc-ok: yes\nFinished. Total time: 0.003s"
+    },
+    "getvar:erase-block-size": {
+      "rc": 0,
+      "out": "erase-block-size:  0x1000\nFinished. Total time: 0.003s"
+    },
+    "getvar:logical-block-size": {
+      "rc": 0,
+      "out": "logical-block-size:  0x1000\nFinished. Total time: 0.003s"
+    },
+    "getvar:kernel": {
+      "rc": 0,
+      "out": "kernel: uefi\nFinished. Total time: 0.004s"
+    },
+    "getvar:charger-screen-enabled": {
+      "rc": 0,
+      "out": "charger-screen-enabled: 1\nFinished. Total time: 0.003s"
+    },
+    "getvar:off-mode-charge": {
+      "rc": 0,
+      "out": "off-mode-charge: 1\nFinished. Total time: 0.003s"
+    },
+    "getvar:is-userspace": {
+      "rc": 0,
+      "out": "is-userspace: no\nFinished. Total time: 0.004s"
+    },
+    "getvar:parallel-download-flash": {
+      "rc": 0,
+      "out": "parallel-download-flash: yes\nFinished. Total time: 0.003s"
+    },
+    "getvar:unlock_ability": {
+      "rc": 0,
+      "out": "getvar:unlock_ability                              FAILED (remote: 'GetVar Variable Not found')\nFinished. Total time: 0.004s"
+    },
+    "getvar:unlock-ability": {
+      "rc": 0,
+      "out": "getvar:unlock-ability                              FAILED (remote: 'GetVar Variable Not found')\nFinished. Total time: 0.004s"
+    },
+    "getvar:flash-type": {
+      "rc": 0,
+      "out": "getvar:flash-type                                  FAILED (remote: 'GetVar Variable Not found')\nFinished. Total time: 0.004s"
+    },
+    "getvar:flash-lock": {
+      "rc": 0,
+      "out": "getvar:flash-lock                                  FAILED (remote: 'GetVar Variable Not found')\nFinished. Total time: 0.004s"
+    },
+    "getvar:device-locked": {
+      "rc": 0,
+      "out": "getvar:device-locked                               FAILED (remote: 'GetVar Variable Not found')\nFinished. Total time: 0.004s"
+    },
+    "getvar:verity-mode": {
+      "rc": 0,
+      "out": "getvar:verity-mode                                 FAILED (remote: 'GetVar Variable Not found')\nFinished. Total time: 0.005s"
+    },
+    "getvar:oem-locked": {
+      "rc": 0,
+      "out": "getvar:oem-locked                                  FAILED (remote: 'GetVar Variable Not found')\nFinished. Total time: 0.005s"
+    },
+    "getvar:frp-state": {
+      "rc": 0,
+      "out": "getvar:frp-state                                   FAILED (remote: 'GetVar Variable Not found')\nFinished. Total time: 0.004s"
+    },
+    "getvar:security-patch-level": {
+      "rc": 0,
+      "out": "security-patch-level: 2026-10-01\nFinished. Total time: 0.003s"
+    },
+    "getvar:rollback-index": {
+      "rc": 0,
+      "out": "getvar:rollback-index                              FAILED (remote: 'GetVar Variable Not found')\nFinished. Total time: 0.005s"
+    },
+    "oem device-info": {
+      "rc": 0,
+      "out": "(bootloader) Verity mode: true\n(bootloader) Device unlocked: false\n(bootloader) Device critical unlocked: false\n(bootloader) Charger screen enabled: true\nOKAY [  0.001s]\nFinished. Total time: 0.001s"
+    },
+    "oem fbreason": {
+      "rc": 0,
+      "out": "(bootloader) Reason:Reboot Bootloader\n(bootloader) Powerup Reason: 40011\nOKAY [  0.001s]\nFinished. Total time: 0.001s"
+    },
+    "oem uefilog": {
+      "rc": 1,
+      "out": "FAILED (remote: 'Failed to get logfs files')\nfastboot: error: Command failed"
+    },
+    "oem battery": {
+      "rc": 1,
+      "out": "FAILED (remote: 'unknown command')\nfastboot: error: Command failed"
+    },
+    "oem battery_status": {
+      "rc": 1,
+      "out": "FAILED (remote: 'unknown command')\nfastboot: error: Command failed"
+    },
+    "oem device_info": {
+      "rc": 1,
+      "out": "FAILED (remote: 'unknown command')\nfastboot: error: Command failed"
+    },
+    "oem get_identifier_token": {
+      "rc": 1,
+      "out": "FAILED (remote: 'unknown command')\nfastboot: error: Command failed"
+    },
+    "oem shouhoujiance": {
+      "rc": 0,
+      "out": "OKAY [  0.015s]\nFinished. Total time: 0.015s"
+    },
+    "oem gaugelog": {
+      "rc": 1,
+      "out": "FAILED (Write to device failed (no link))\nfastboot: error: Command failed"
+    },
+    "oem fakta": {
+      "rc": 1,
+      "out": "FAILED (Write to device failed (no link))\nfastboot: error: Command failed"
+    },
+    "oem debug-info": {
+      "rc": 1,
+      "out": "FAILED (Write to device failed (no link))\nfastboot: error: Command failed"
+    },
+    "oem get-platform-info": {
+      "rc": 1,
+      "out": "FAILED (Write to device failed (no link))\nfastboot: error: Command failed"
+    },
+    "oem get-boot-info": {
+      "rc": 1,
+      "out": "FAILED (Write to device failed (no link))\nfastboot: error: Command failed"
+    },
+    "oem list_vars": {
+      "rc": 1,
+      "out": "FAILED (Write to device failed (no link))\nfastboot: error: Command failed"
+    },
+    "oem edl": {
+      "rc": 1,
+      "out": "FAILED (Write to device failed (no link))\nfastboot: error: Command failed"
+    },
+    "oem reboot-edl": {
+      "rc": 1,
+      "out": "FAILED (Write to device failed (no link))\nfastboot: error: Command failed"
+    },
+    "oem reboot_edl": {
+      "rc": 1,
+      "out": "FAILED (Write to device failed (no link))\nfastboot: error: Command failed"
+    },
+    "oem reboot edl": {
+      "rc": 1,
+      "out": "FAILED (Write to device failed (no link))\nfastboot: error: Command failed"
+    },
+    "oem enter-edl": {
+      "rc": 1,
+      "out": "FAILED (Write to device failed (no link))\nfastboot: error: Command failed"
+    },
+    "oem download": {
+      "rc": 1,
+      "out": "FAILED (Write to device failed (no link))\nfastboot: error: Command failed"
+    },
+    "oem rebootedl": {
+      "rc": 1,
+      "out": "FAILED (Write to device failed (no link))\nfastboot: error: Command failed"
+    },
+    "oem unlock": {
+      "rc": 1,
+      "out": "FAILED (Write to device failed (no link))\nfastboot: error: Command failed"
+    },
+    "oem unlock-go": {
+      "rc": 1,
+      "out": "FAILED (Write to device failed (no link))\nfastboot: error: Command failed"
+    },
+    "oem relock": {
+      "rc": 1,
+      "out": "FAILED (Write to device failed (no link))\nfastboot: error: Command failed"
+    },
+    "oem lock": {
+      "rc": 1,
+      "out": "FAILED (Write to device failed (no link))\nfastboot: error: Command failed"
+    },
+    "oem get_unlock_data": {
+      "rc": 1,
+      "out": "FAILED (Write to device failed (no link))\nfastboot: error: Command failed"
+    },
+    "oem get-identifier-token": {
+      "rc": 1,
+      "out": "FAILED (Write to device failed (no link))\nfastboot: error: Command failed"
+    },
+    "oem anti": {
+      "rc": 1,
+      "out": "FAILED (Write to device failed (no link))\nfastboot: error: Command failed"
+    },
+    "oem antidata": {
+      "rc": 1,
+      "out": "FAILED (Write to device failed (no link))\nfastboot: error: Command failed"
+    },
+    "oem reset-slot": {
+      "rc": 1,
+      "out": "FAILED (Write to device failed (no link))\nfastboot: error: Command failed"
+    },
+    "oem clear-slot": {
+      "rc": 1,
+      "out": "FAILED (Write to device failed (no link))\nfastboot: error: Command failed"
+    },
+    "oem reset-attributes": {
+      "rc": 1,
+      "out": "FAILED (Write to device failed (no link))\nfastboot: error: Command failed"
+    },
+    "oem clear-unbootable": {
+      "rc": 1,
+      "out": "FAILED (Write to device failed (no link))\nfastboot: error: Command failed"
+    },
+    "oem repair-slot": {
+      "rc": 1,
+      "out": "FAILED (Write to device failed (no link))\nfastboot: error: Command failed"
+    },
+    "oem reset-bootfail": {
+      "rc": 1,
+      "out": "FAILED (Write to device failed (no link))\nfastboot: error: Command failed"
+    },
+    "oem clear-retry": {
+      "rc": 1,
+      "out": "FAILED (Write to device failed (no link))\nfastboot: error: Command failed"
+    },
+    "oem reset_slot": {
+      "rc": 1,
+      "out": "FAILED (Write to device failed (no link))\nfastboot: error: Command failed"
+    },
+    "oem recovery": {
+      "rc": 1,
+      "out": "FAILED (Write to device failed (no link))\nfastboot: error: Command failed"
+    },
+    "oem recovery-wipe": {
+      "rc": 1,
+      "out": "FAILED (Write to device failed (no link))\nfastboot: error: Command failed"
+    },
+    "oem get-build-info": {
+      "rc": 1,
+      "out": "FAILED (Write to device failed (no link))\nfastboot: error: Command failed"
+    },
+    "oem get-partition-info": {
+      "rc": 1,
+      "out": "FAILED (Write to device failed (no link))\nfastboot: error: Command failed"
+    },
+    "oem check-partition": {
+      "rc": 1,
+      "out": "FAILED (Write to device failed (no link))\nfastboot: error: Command failed"
+    },
+    "oem verify-partition": {
+      "rc": 1,
+      "out": "FAILED (Write to device failed (no link))\nfastboot: error: Command failed"
+    },
+    "oem p2u": {
+      "rc": 1,
+      "out": "FAILED (Write to device failed (no link))\nfastboot: error: Command failed"
+    },
+    "oem bootmode": {
+      "rc": 1,
+      "out": "FAILED (Write to device failed (no link))\nfastboot: error: Command failed"
+    },
+    "oem select-display": {
+      "rc": 1,
+      "out": "FAILED (Write to device failed (no link))\nfastboot: error: Command failed"
+    },
+    "oem bootloader-version": {
+      "rc": 1,
+      "out": "FAILED (Write to device failed (no link))\nfastboot: error: Command failed"
+    },
+    "oem reboot-fastboot": {
+      "rc": 1,
+      "out": "FAILED (Write to device failed (no link))\nfastboot: error: Command failed"
+    },
+    "oem enter-fastbootd": {
+      "rc": 1,
+      "out": "FAILED (Write to device failed (no link))\nfastboot: error: Command failed"
+    },
+    "oem reboot-recovery": {
+      "rc": 1,
+      "out": "FAILED (Write to device failed (no link))\nfastboot: error: Command failed"
+    },
+    "oem flashall": {
+      "rc": 1,
+      "out": "FAILED (Write to device failed (no link))\nfastboot: error: Command failed"
+    },
+    "oem format": {
+      "rc": 1,
+      "out": "FAILED (Write to device failed (no link))\nfastboot: error: Command failed"
+    },
+    "oem erase": {
+      "rc": 1,
+      "out": "FAILED (Write to device failed (no link))\nfastboot: error: Command failed"
+    },
+    "oem pwrdn": {
+      "rc": 1,
+      "out": "FAILED (Write to device failed (no link))\nfastboot: error: Command failed"
+    },
+    "oem powerdown": {
+      "rc": 1,
+      "out": "FAILED (Write to device failed (no link))\nfastboot: error: Command failed"
+    },
+    "oem force-slot-switch": {
+      "rc": 1,
+      "out": "FAILED (Write to device failed (no link))\nfastboot: error: Command failed"
+    },
+    "oem switch-slot": {
+      "rc": 1,
+      "out": "FAILED (Write to device failed (no link))\nfastboot: error: Command failed"
+    },
+    "oem toggle-slot": {
+      "rc": 1,
+      "out": "FAILED (Write to device failed (no link))\nfastboot: error: Command failed"
+    },
+    "oem next-slot": {
+      "rc": 1,
+      "out": "FAILED (Write to device failed (no link))\nfastboot: error: Command failed"
+    },
+    "oem fallback-slot": {
+      "rc": 1,
+      "out": "FAILED (Write to device failed (no link))\nfastboot: error: Command failed"
+    }
+  },
+  "hits": [
+    {
+      "cmd": "oem device-info",
+      "out": "(bootloader) Verity mode: true\n(bootloader) Device unlocked: false\n(bootloader) Device critical unlocked: false\n(bootloader) Charger screen enabled: true\nOKAY [  0.001s]\nFinished. Total time: 0.001s"
+    },
+    {
+      "cmd": "oem fbreason",
+      "out": "(bootloader) Reason:Reboot Bootloader\n(bootloader) Powerup Reason: 40011\nOKAY [  0.001s]\nFinished. Total time: 0.001s"
+    },
+    {
+      "cmd": "oem shouhoujiance",
+      "out": "OKAY [  0.015s]\nFinished. Total time: 0.015s"
+    }
+  ]
+}

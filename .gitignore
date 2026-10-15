@@ -1,0 +1,28 @@
+# Крупные бинарные файлы (прошивки)
+*.zip
+*.tgz
+*.tar.gz
+*.rar
+*.7z
+
+# Инструменты (их легко скачать заново)
+adb/
+tools_r25.0.4/
+twrp/
+MiFlash*/
+miflash_*/
+BATCH_BL_TO_EDL*/
+UnlockerBL_8EG5_v2_rus/
+Mi8e5-unlock-windows-auto-release_rus/
+xiaomi/
+RYUOS_*/
+Click*.exe
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# Отчёты (приватные данные)
+# НЕ коммитим бинарные дампы — там могут быть идентификаторы
+*.bin

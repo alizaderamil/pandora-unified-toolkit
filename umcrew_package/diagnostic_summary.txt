@@ -1,0 +1,54 @@
+=== Xiaomi 17 Pro China (pandora) — состояние телефона ===
+Дата: 15 октября 2026
+
+Модель: 25098PN5AC (pandora)
+Чип: Snapdragon 8 Elite (SM8 UFS)
+Серийный номер: d5835558
+Последняя система: OS4.0.2.0.XBLCNXM, Android 17
+Патч безопасности: 2026-10-01
+
+=== Текущее состояние Fastboot ===
+unlocked: no (загрузчик заблокирован)
+secure: yes
+current-slot: a
+slot-successful:a: yes
+slot-unbootable:a: yes  ← ПРОБЛЕМА
+slot-retry-count:a: 4
+slot-successful:b: no
+slot-unbootable:b: yes
+slot-retry-count:b: 0
+anti-rollback: 1
+get_unlock_ability: 1
+snapshot-update-status: none
+battery-voltage: 4381 mV (норма)
+
+=== Причина загрузки в Fastboot ===
+oem fbreason: "Reason:LoadImageAndAuth Fail"
+Powerup Reason: 80001
+
+=== Что уже пробовали (всё отказало) ===
+- fastboot oem edl → Error Invalid Parameter
+- fastboot reboot edl → не поддерживается
+- fastboot oem unlock → Token Verify Failed
+- fastboot flashing unlock → unknown command
+- fastboot set_active → Slot Change not allowed in Lock State
+- Mi Unlock Tool → ошибка 20045 (регион аккаунта не совпадает)
+- Fastboot to EDL Tool (CPTool) → "Your account is unauthorized"
+- Mi-аккаунт отвязан через i.mi.com (Find Device → Remove)
+
+=== Что уже делали до блокировки ===
+1. Был разблокирован через UnlockerBL_8EG5_v2 (linuxloader_unlock.efi/efisp)
+2. Установили xiaomi.eu и TWRP antocorvo3000 3.7.1_16
+3. Восстановили recovery_a и vbmeta_a из OS4 OTA
+4. Android загружался нормально
+5. Выполнили fastboot erase efisp
+6. Выполнили fastboot oem lock → OKAY
+7. После reboot → телефон в Fastboot, оба слота unbootable
+
+=== На ПК есть ===
+- D:\xiaomi\pandora-ota_full-OS4.0.2.0.XBLCNXM-user-17.0-0c778d15e7.zip
+- D:\xiaomi\pandora-ota_full-OS3.0.319.0.WBLCNXM-user-16.0-2d01cf4d66.zip
+- D:\xiaomi\pandora_images_OS3.0.319.0.WBLCNXM_20260824.0000.00_16.0_cn_0d6422c055.tgz
+- D:\xiaomi\xiaomi.eu_PANDORA_OS3.0.319.0.WBLCNXM_16_6322a83037.zip
+- Диагностические отчёты
+- Дамп bootfail (10 МБ, SHA-256: 3ce2fd7523896348564f0d1d70677b5d7fd774dbb340b4ead497c0f9862d0fdb)
