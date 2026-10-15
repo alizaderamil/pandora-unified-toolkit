@@ -340,3 +340,69 @@ challenge-response криптография — токен уникален дл
 - Удалённый сервис через TeamViewer (@UMcrew / @three_tools_gsm)
 
 Для рядового пользователя второй путь дешевле, быстрее и безопаснее.
+
+---
+
+## 🔬 Полная ревизия GitHub (15 октября 2026, ночь)
+
+Проверены крупные профильные репозитории:
+
+### Инструменты и эксплойты найденные на GitHub
+
+| Репо | Статус | Применимость |
+|------|--------|--------------|
+| [kasnria001/qualcomm_gbl_exploit_poc](https://github.com/kasnria001/qualcomm_gbl_exploit_poc) (972⭐) | ❌ | efisp erased + patch > Feb 2026 + Android не грузится |
+| [panks/xiaomi-sd8eg5-bootloader-unlock-relock](https://github.com/panks/xiaomi-sd8eg5-bootloader-unlock-relock) | ❌ | Враппер того же exploit, те же ограничения |
+| [bkerler/edl](https://github.com/bkerler/edl) (2.6k⭐) | ⚠️ | Главный EDL инструмент, НО требует firehose для SM8850 |
+| [bkerler/Loaders](https://github.com/bkerler/Loaders) (550⭐) | ❌ | Публичные loaders только до SDM855. Для SM8850 нет |
+| [MissMyTime/twrp_device_sm8850](https://github.com/MissMyTime/twrp_device_sm8850) | ⚠️ | TWRP для canoe (K90/K90PM/17 Ultra), pandora не поддержан |
+| [LokumKernel_SM8850](https://github.com/topics/lokumkernel) | ⚠️ | Исходники кастомного ядра для pandora. Нужна подпись |
+| [MlgmXyysd/xiaomi-hyperos-bootloader-bypass](https://github.com/MlgmXyysd/xiaomi-hyperos-bootloader-bypass) (3.5k⭐) | ❌ | Обход привязки аккаунта, но нужен работающий Android |
+| [AsInsideOut/miunlocktool](https://github.com/AsInsideOut/miunlocktool) (266⭐) | ❌ | "EXCEPT China (CNXM)" прямо исключён |
+| [linuxct/HyperSploit](https://github.com/linuxct/HyperSploit) | ❌ | Обход HyperOS, не для битых |
+
+### Что это окончательно подтверждает
+
+**На GitHub НЕТ:**
+1. Публичного firehose loader для SM8850 (SD 8 Elite Gen 5)
+2. Эксплойта работающего на патче 2026-10-01
+3. Инструмента для китайского ROM (CNXM) без Android
+4. TWRP специально для pandora
+5. Подписанных образов boot/recovery для OS4
+
+**На GitHub ЕСТЬ (но не помогает нам):**
+1. Исходники ядра pandora — можно собрать, но подписать нельзя
+2. TWRP для похожих устройств (canoe) — не для pandora
+3. Исходный GBL exploit — патченный на нашем устройстве
+4. Общий EDL framework — нет loader для нас
+
+### Главная техническая преграда
+
+GBL exploit работает так:
+1. Нужно записать `gbl_efi_unlock.efi` в раздел **efisp**
+2. При загрузке ABL прочитает его и выполнит код
+3. Код перезапишет lock state в RPMB
+
+**У нас три блокера:**
+- ❌ **efisp стёрт** (`fastboot erase efisp` до блокировки)
+- ❌ **Нельзя записать efisp** когда загрузчик заблокирован
+- ❌ **Патч закрыл дыру** в HyperOS 3.0.304+
+
+Это одновременно три защиты против одной атаки. Для нашей версии прошивки GBL exploit не применим.
+
+### Итог окончательный
+
+**На GitHub никто не выложил и не выложит код который бы помог в твоей конкретной ситуации** потому что:
+- Эксплойты закрыты патчем
+- CNXM ROM специально исключён публичными инструментами  
+- Для работы с заблокированным SM8850 нужны приватные ключи Xiaomi
+- Коммерческие сервисы специально не публикуют свои loaders
+
+Это объективное положение дел, не недостаток поиска.
+
+### Параллельное решение
+
+Пока нет публичного инструмента — **UMcrew / @three_tools_gsm** остаются единственным практичным путём. Эти сервисы работают потому что имеют:
+- Утечки подписанных firehose loaders (не публикуют публично)
+- Авторизованные Mi аккаунты
+- Опыт с конкретными моделями
