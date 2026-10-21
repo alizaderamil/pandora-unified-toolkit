@@ -243,7 +243,8 @@ UFS_MANUFACTURERS = {
 class App:
     def __init__(self, root):
         self.root = root
-        root.title("Pandora Unified 1.2 — Xiaomi diagnostics (pandora + miel)")
+        devices_str = " + ".join(sorted(DEVICE_PROFILES.keys()))
+        root.title(f"Pandora Unified 1.2 — Xiaomi diagnostics ({devices_str})")
         root.geometry("1200x860")
         root.configure(bg="#0a0f1e")
         self.busy = False

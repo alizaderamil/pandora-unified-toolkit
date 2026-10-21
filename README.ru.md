@@ -20,7 +20,7 @@
 | Модель | `pandora` (25098PN5AC) |
 | Чип | Snapdragon 8 Elite |
 | UFS | `SM8 UFS` (Samsung) ✓ |
-| Серийник | `d5835558` |
+| Серийник | `d5xxxxxx` |
 | Загрузчик | **ЗАБЛОКИРОВАН** (`unlocked: no`) |
 | Secure | yes |
 | Активный слот | `a` |
@@ -32,7 +32,7 @@
 | Причина ошибки | `LoadImageAndAuth Fail` |
 
 **Токен (динамический):**
-- `VQEBJQEQGdU6x2Z35UYa30b5ehbdvQMHcGFuZG9yYQIIAAAEasOr5Uk`
+- `[DYNAMIC_TOKEN_REDACTED]`
 
 **Последняя установленная система:** OS4.0.2.0.XBLCNXM (Android 17, патч 2026-10-01)
 
