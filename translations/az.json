@@ -9,7 +9,7 @@
   "btn.bootfail": "3. Bootfail analizi",
   "btn.compare": "4. Firmware ilə müqayisə",
   "btn.reports": "5. Hesabatlar",
-  "btn.lock_wizard": "🔒 Kilid Sihirbazı",
+  "btn.lock_wizard": "Kilidləmə: təsdiq tələb olunur",
   "btn.snapshot": "📸 Snapshot (ehtiyat)",
   "btn.service_report": "🏥 Servis hesabatı",
   "btn.ufs_health": "📊 UFS Sağlamlıq",
@@ -35,8 +35,8 @@
   "msg.unknown_device": "⚠️  Cihaz tanınmadı (product={product})",
   "msg.limited_features": "   Profilə bağlı funksiyalar (Compare, Lock Wizard) məhdud olacaq.",
 
-  "lock.title.exploit": "✅ DÜZGÜN ARDICILLIQ (exploit açılış, 3 addım):",
-  "lock.title.mi_unlock": "✅ STANDART KİLİD (Mi Unlock ilə açılmış):",
+  "lock.title.exploit": "Kilidləmə: təsdiq tələb olunur",
+  "lock.title.mi_unlock": "Kilidləmə: təsdiq tələb olunur",
 
   "report.title": "Servis mərkəzi üçün hesabat",
   "report.h1": "📱 Servis mərkəzi üçün hesabat",
@@ -68,7 +68,7 @@
   "tip.bootfail": ".bin bootfail dump-u səhvlər, versiyalar, boot səbəbləri üçün təhlil et. [F3]",
   "tip.compare": "Cari bölmə ölçülərini etalon OTA ilə müqayisə et. [F4]",
   "tip.reports": "unified_reports/ qovluğunu diaqnostika tarixçəsi ilə aç. [F5]",
-  "tip.lock_wizard": "Sənin açılış növü üçün düzgün kilid ardıcıllığını göstər. Vasitənin əsas dəyəri. [F6]",
+  "tip.lock_wizard": "Kilidləmə: təsdiq tələb olunur",
   "tip.snapshot": "getvar + OEM + dynamic token zip-ə ehtiyat et. Hər təhlükəli əməliyyatdan ƏVVƏL işə sal. [F7]",
   "tip.service_report": "Usta üçün müstəqil HTML hesabat yarat. [F8]",
   "tip.ufs_health": "ADB dd oxuma/yazma benchmark-ı. İlk dəfə baseline saxlayır, sonra müqayisə edir. [F9]",
@@ -88,13 +88,16 @@
   "wizard.subtitle": "Nə etmək istəyirsən?",
   "wizard.diagnose.title": "Sınıq / ilişib qalmış telefonu diaqnostika et",
   "wizard.diagnose.body": "Tam fastboot diaqnostikası işə sal və cihazın hansı vəziyyətdə olduğunu gör.",
-  "wizard.lock.title": "Bootloader-i təhlükəsiz kilidlə",
-  "wizard.lock.body": "Sənin açılış metodun üçün Lock Wizard-ı düzgün ardıcıllıqla aç.",
+  "wizard.lock.title": "Kilidləmə: təsdiq tələb olunur",
+  "wizard.lock.body": "Bu utilit kilidləmənin təhlükəsiz olduğunu təsdiqləyə bilməz. Kilidləmə və ya silmə skriptləri yaratmır.",
   "wizard.health.title": "UFS sağlamlığını ölç",
   "wizard.health.body": "İndi baseline saxla ki, sonra deqradasiyanı izləyə biləsən (məsələn chip-off-dan sonra).",
   "wizard.backup.title": "Təhlükəli əməliyyatdan əvvəl ehtiyat",
   "wizard.backup.body": "Prosivkadan və ya kilidlənmədən əvvəl getvar + token + OEM-i təhlükəsiz zip-ə snapshot et.",
   "wizard.explore.title": "Sadəcə baxmaq",
   "wizard.explore.body": "Bunu bağla və əsas pəncərəyə keç.",
-  "wizard.dontshow": "Bir daha göstərmə"
+  "wizard.dontshow": "Bir daha göstərmə",
+  "lock.review.title": "Kilidləmə: təsdiq tələb olunur",
+  "lock.review.close": "Bağla",
+  "lock.review.body": "Bu utilit kilidləmənin təhlükəsiz olduğunu təsdiqləyə bilməz. Kilidləmə və ya silmə skriptləri yaratmır.\n\nTəkcə kilidaçma üsulu və cihaz profili kifayət etmir. Açıq bootloader ilə Android-in açılması, bölmə ölçülərinin uyğunluğu və diaqnostika hesabatı imza zəncirini yoxlamır və bölmələrin ehtiyat nüsxəsini əvəz etmir.\n\nKilidləmədən əvvəl dəqiq model, satış regionu, tam rəsmi proqram təminatının mənşəyi və həqiqiliyi, anti-rollback uyğunluğu və istehsalçının uyğun təlimatı yoxlanmalıdır. Dəyişdirilmiş obrazlar (xiaomi.eu, TWRP, Magisk daxil olmaqla) uyğun rəsmi proqram təminatını təsdiqləmir.\n\npandora hadisəsində efisp silindikdən və bootloader kilidləndikdən sonra açılış dayanıb. Saxlanmış jurnal açılan slotun olmadığını bildirir, lakin tam səbəbi sübut etmir. Təmir hekayəsi universal kilidləmə təlimatı deyil. clean_all_and_lock və ya bağlı bootloader Play Protect sertifikatına zəmanət vermir.\n\nTarixi əmrləri təmir təlimatı kimi təkrarlamayın. Ehtiyat nüsxəni telefondan kənarda saxlayın. Məlumat naməlum və ya ziddiyyətlidirsə, məhz bu model və proqram təminatı yoxlanmalıdır."
 }
