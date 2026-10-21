@@ -841,7 +841,7 @@ class App:
                 "LESSONS_LEARNED.md не найден",
                 f"Файл отсутствует:\n{LESSONS}\n\n"
                 "Скачай его из репозитория "
-                "https://github.com/alizaderamil/xiaomi-pandora-recovery",
+                "https://github.com/alizaderamil/pandora-unified-toolkit",
             )
 
     # === Pre-flight confirm — универсальная защита перед опасной операцией ===
@@ -1442,7 +1442,7 @@ class App:
 <footer>
   Сгенерировано Pandora Unified 1.1 ·
   Полный журнал восстановления:
-  <a href="https://github.com/alizaderamil/xiaomi-pandora-recovery">github.com/alizaderamil/xiaomi-pandora-recovery</a>
+  <a href="https://github.com/alizaderamil/pandora-unified-toolkit">github.com/alizaderamil/pandora-unified-toolkit</a>
 </footer>
 
 </body>

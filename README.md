@@ -117,4 +117,6 @@ It CAN:
 ## Links
 
 - Issue / discussion: GitHub issues on this repo
-- Repository: https://github.com/alizaderamil/xiaomi-pandora-recovery
+- Repository: https://github.com/alizaderamil/pandora-unified-toolkit
+- Ready-to-paste community announcements: [docs/PROMOTION.md](docs/PROMOTION.md)
+- How to add screenshots: [docs/SCREENSHOTS.md](docs/SCREENSHOTS.md)
