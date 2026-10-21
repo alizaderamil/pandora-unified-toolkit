@@ -1019,35 +1019,60 @@ class App:
             return
 
         # Получаем модель устройства для надёжности
-        rc, out = adb_cmd("shell", "getprop", "ro.product.model", timeout=5)
-        self.write(f"Устройство: {out.strip()}")
+        rc, model_out = adb_cmd("shell", "getprop", "ro.product.model", timeout=5)
+        rc, codename_out = adb_cmd("shell", "getprop", "ro.product.name", timeout=5)
+        model = model_out.strip()
+        codename = codename_out.strip()
+        self.write(f"Устройство: {model} ({codename})")
 
-        # Чтение
-        self.write("Тест ЧТЕНИЯ (256 МБ случайный блок UFS)…")
-        rc, out = adb_cmd(
-            "shell",
-            "dd if=/dev/block/bootdevice of=/dev/null bs=1M count=256 iflag=nocache 2>&1",
-            timeout=60,
-        )
-        read_mbs = self._parse_dd_speed(out)
-        if read_mbs:
-            self.write(f"✓ Чтение: {read_mbs:.1f} МБ/с", "ok")
-        else:
-            self.write(f"Не смог распарсить скорость: {out[:200]}", "warn")
+        # Предупреждение если это не pandora
+        if codename and "pandora" not in codename.lower():
+            self.write(f"⚠️  Внимание: это не pandora (codename={codename})", "warn")
+            self.write("   Baseline будет записан в отдельный файл для этого устройства.", "warn")
 
-        # Запись (в /data/local/tmp — безопасно)
-        self.write("Тест ЗАПИСИ (256 МБ в /data/local/tmp)…")
+        # Файл baseline отдельный для каждого устройства
+        baseline_file = REPORTS / f"ufs_baseline_{codename or 'unknown'}.json"
+
+        # ЗАПИСЬ (512 МБ, conv=fsync — физический сброс на UFS без кэша)
+        # На Android toybox-dd нет iflag=nocache/oflag=sync, используем conv=fsync
+        self.write("Тест ЗАПИСИ (512 МБ в /data/local/tmp, conv=fsync)…")
         adb_cmd("shell", "rm -f /data/local/tmp/_ufs_test", timeout=5)
         rc, out = adb_cmd(
             "shell",
-            "dd if=/dev/zero of=/data/local/tmp/_ufs_test bs=1M count=256 oflag=sync 2>&1",
-            timeout=60,
+            "dd if=/dev/zero of=/data/local/tmp/_ufs_test bs=1M count=512 conv=fsync 2>&1",
+            timeout=120,
         )
         write_mbs = self._parse_dd_speed(out)
         if write_mbs:
             self.write(f"✓ Запись: {write_mbs:.1f} МБ/с", "ok")
         else:
-            self.write(f"Не смог распарсить скорость: {out[:200]}", "warn")
+            self.write(f"Не смог распарсить скорость записи: {out[:200]}", "warn")
+
+        # Пытаемся «вытолкнуть» файл из page cache: пишем второй большой файл
+        # На устройствах с ≤8 ГБ RAM это сбросит часть кэша. Не идеально, но без root
+        # лучше нельзя. Если RAM >8 ГБ — чтение всё равно попадёт в кэш.
+        self.write("Готовлю чтение (сбрасываю page cache через второй файл)…")
+        adb_cmd(
+            "shell",
+            "dd if=/dev/zero of=/data/local/tmp/_cache_flush bs=1M count=2048 2>&1",
+            timeout=120,
+        )
+        adb_cmd("shell", "rm -f /data/local/tmp/_cache_flush", timeout=10)
+
+        # ЧТЕНИЕ (512 МБ)
+        self.write("Тест ЧТЕНИЯ (512 МБ из /data/local/tmp)…")
+        rc, out = adb_cmd(
+            "shell",
+            "dd if=/data/local/tmp/_ufs_test of=/dev/null bs=1M 2>&1",
+            timeout=120,
+        )
+        read_mbs = self._parse_dd_speed(out)
+        if read_mbs:
+            self.write(f"✓ Чтение: {read_mbs:.1f} МБ/с", "ok")
+            if read_mbs > 2500 and write_mbs and read_mbs > write_mbs * 2:
+                self.write("   (вероятно частично из RAM-кэша — цифра оптимистичная)", "warn")
+        else:
+            self.write(f"Не смог распарсить скорость чтения: {out[:200]}", "warn")
         adb_cmd("shell", "rm -f /data/local/tmp/_ufs_test", timeout=5)
 
         # Сохраняем результат
@@ -1055,19 +1080,20 @@ class App:
         now = datetime.now().isoformat()
         measurement = {
             "time": now,
+            "device": {"model": model, "codename": codename},
             "read_mbs": read_mbs,
             "write_mbs": write_mbs,
         }
 
-        # Baseline
-        if not UFS_BASELINE.exists():
-            UFS_BASELINE.write_text(json.dumps(measurement, indent=2), encoding="utf-8")
+        # Baseline (отдельный для каждого устройства)
+        if not baseline_file.exists():
+            baseline_file.write_text(json.dumps(measurement, indent=2), encoding="utf-8")
             self.write("", "")
-            self.write("📌 BASELINE сохранён (первый замер).", "hdr")
+            self.write(f"📌 BASELINE сохранён: {baseline_file.name}", "hdr")
             self.write("   Запусти этот тест через месяц, затем через 6/12 месяцев.")
             self.write("   Если скорость упадёт >20% — пайка начинает деградировать.", "warn")
         else:
-            baseline = json.loads(UFS_BASELINE.read_text(encoding="utf-8"))
+            baseline = json.loads(baseline_file.read_text(encoding="utf-8"))
             self.write("", "")
             self.write(f"📊 Сравнение с baseline ({baseline['time']}):", "hdr")
 
@@ -1095,13 +1121,15 @@ class App:
                 self.write("   Рекомендую: ещё раз замерить через неделю,", "warn")
                 self.write("   если тренд подтвердится — обратись в сервис по гарантии.", "warn")
 
-        # История
+        # История (одна общая, с полем device)
         history_path = REPORTS / "ufs_history.jsonl"
         with open(history_path, "a", encoding="utf-8") as f:
             f.write(json.dumps(measurement, ensure_ascii=False) + "\n")
         self.write("", "")
         self.write(f"✓ История: {history_path.name}", "ok")
-        self.status.set(f"UFS: R={read_mbs:.0f} W={write_mbs:.0f} МБ/с")
+        rd = f"{read_mbs:.0f}" if read_mbs else "?"
+        wr = f"{write_mbs:.0f}" if write_mbs else "?"
+        self.status.set(f"UFS {codename or model}: R={rd} W={wr} МБ/с")
 
     def _parse_dd_speed(self, output):
         """Парсит скорость из вывода dd (МБ/с)."""
