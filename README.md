@@ -56,7 +56,10 @@ The underlying mistake — that `fastboot oem lock` alone does NOT re-lock after
 |----------|--------|------|---------|---------------|
 | `pandora` | Xiaomi 17 Pro China | Snapdragon 8 Elite (SM8850) | UFS 4.0 | exploit |
 | `dada` | Xiaomi 15 | Snapdragon 8 Elite (SM8750-AB) | UFS 4.0 / 3.1 | exploit (CN) / Mi Unlock (Global) |
+| `klimt` | Xiaomi 15T Pro | **MediaTek** Dimensity 9400+ | UFS 4.0 | Mi Unlock |
 | `miel` | Redmi Note 11 | Snapdragon 680 | UFS 2.2 | Mi Unlock |
+
+> **MediaTek vs Qualcomm**: the tool handles both. The low-level recovery path differs — for MediaTek devices like `klimt`, the EDL equivalent is **BROM mode** and MiFlash is replaced by **SP Flash Tool**. See each profile's `tried_methods` for the device-specific flow.
 
 **Your device not listed?** Adding one is a 10-minute JSON edit — see [profiles/README.md](profiles/README.md).
 

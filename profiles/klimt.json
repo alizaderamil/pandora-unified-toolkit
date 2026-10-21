@@ -1,0 +1,31 @@
+{
+  "codename": "klimt",
+  "name": "Xiaomi 15T Pro",
+  "models": ["2506BPN68G"],
+  "chip": "MediaTek Dimensity 9400+ (MT6991)",
+  "storage_type": "UFS 4.0",
+  "ufs_speeds_expected": {
+    "read": 3700,
+    "write": 2800
+  },
+  "unlock_method": "mi_unlock",
+  "ota_paths": [],
+  "critical_partitions": {},
+  "tried_methods": [
+    ["fastboot getvar / oem device-info", "OK", "Standard diagnostic (works on MTK too)"],
+    ["Mi Unlock Tool (xiaomi.com)", "OK", "Available for Global ROM — standard 168+ hour wait"],
+    ["BROM mode (MediaTek equivalent of EDL)", "?", "Enter via volume keys + USB, requires SP Flash Tool"],
+    ["SP Flash Tool", "?", "MediaTek alternative to MiFlash — standard recovery path"],
+    ["mtkclient / MTK exploit", "?", "MediaTek exploit tool coverage for Dimensity 9400+ not confirmed"],
+    ["TWRP (orangefox)", "?", "Status for klimt not confirmed"]
+  ],
+  "tried_methods_ru": [
+    ["fastboot getvar / oem device-info", "OK", "Стандартная диагностика (работает и на MTK)"],
+    ["Mi Unlock Tool (xiaomi.com)", "OK", "Доступен для Global ROM — штатные 168+ часов ожидания"],
+    ["BROM режим (аналог EDL для MediaTek)", "?", "Вход через volume keys + USB, требует SP Flash Tool"],
+    ["SP Flash Tool", "?", "MediaTek аналог MiFlash — штатный путь восстановления"],
+    ["mtkclient / MTK эксплойт", "?", "Покрытие MediaTek эксплойта для Dimensity 9400+ не подтверждено"],
+    ["TWRP (orangefox)", "?", "Статус для klimt не подтверждён"]
+  ],
+  "_notes": "Xiaomi 15T Pro uses MediaTek, not Qualcomm — significantly different low-level recovery path. EDL does NOT apply; the MTK equivalent is BROM mode. MiFlash does NOT flash MTK — use SP Flash Tool. The exploit tool landscape is also different: mtkclient covers older Dimensity chips but Dimensity 9400+ coverage needs verification. UFS speeds observed through adb dd: 823 write / 1024 read MB/s — typical for MediaTek controllers through encrypted f2fs (slower than Qualcomm equivalents under the same measurement method)."
+}
