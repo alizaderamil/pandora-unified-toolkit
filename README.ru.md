@@ -1,0 +1,412 @@
+# Xiaomi 17 Pro China (pandora) — Восстановление
+
+> Полный журнал попыток восстановления заблокированного Xiaomi 17 Pro China
+> стуck в Fastboot после повторной блокировки загрузчика.
+
+**Устройство:** Xiaomi 17 Pro China (`25098PN5AC`), кодовое имя `pandora`, чип Snapdragon 8 Elite
+**Дата проблемы:** 15 октября 2026
+**Статус:** ✅ ВОССТАНОВЛЕН (2026-10-21, chip-off в сервисе)
+
+> **📖 Если у тебя похожая проблема — читай [LESSONS_LEARNED.md](LESSONS_LEARNED.md).**
+> Там: что мы сделали неправильно, правильная последовательность блокировки,
+> стоимость/риски/срок жизни после chip-off ремонта, что спросить у мастера.
+
+---
+
+## 📱 Текущее состояние
+
+| Параметр | Значение |
+|----------|----------|
+| Модель | `pandora` (25098PN5AC) |
+| Чип | Snapdragon 8 Elite |
+| UFS | `SM8 UFS` (Samsung) ✓ |
+| Серийник | `d5835558` |
+| Загрузчик | **ЗАБЛОКИРОВАН** (`unlocked: no`) |
+| Secure | yes |
+| Активный слот | `a` |
+| Слот A | `unbootable=yes, successful=yes, retry=4` |
+| Слот B | `unbootable=yes, successful=no` |
+| Anti-rollback | 1 |
+| Патч безопасности | 2026-10-01 |
+| Батарея | 4384 mV (норма) |
+| Причина ошибки | `LoadImageAndAuth Fail` |
+
+**Токен (динамический):**
+- `VQEBJQEQGdU6x2Z35UYa30b5ehbdvQMHcGFuZG9yYQIIAAAEasOr5Uk`
+
+**Последняя установленная система:** OS4.0.2.0.XBLCNXM (Android 17, патч 2026-10-01)
+
+---
+
+## 📖 История событий
+
+### До проблемы
+1. Разблокировали загрузчик через [UnlockerBL_8EG5_v2](D:/xiaomi/UnlockerBL_8EG5_v2_rus) (linuxloader_unlock.efi/efisp)
+2. Установили xiaomi.eu + TWRP antocorvo3000 3.7.1_16
+3. Восстановили `recovery_a` и `vbmeta_a` из OS4 OTA
+4. Android загружался нормально
+5. Google Play показал: "Lock bootloader to fix issue"
+
+### Момент поломки
+```
+fastboot erase efisp         → OKAY
+fastboot oem lock            → OKAY
+fastboot reboot              → возврат в Fastboot
+```
+
+После этого телефон не может выйти из Fastboot.
+Оба слота помечены unbootable, образы не проходят проверку подписи.
+
+---
+
+## 🔍 Что было проверено (ВСЁ отказало)
+
+### Fastboot команды
+| Команда | Результат |
+|---------|-----------|
+| `fastboot oem edl` | ❌ Error Invalid Parameter |
+| `fastboot reboot edl` | ❌ unknown reboot target |
+| `fastboot reboot emergency` | ❌ unknown reboot target |
+| `fastboot oem reboot-edl` | ❌ unknown command |
+| `fastboot oem unlock` | ❌ Token Verify Failed |
+| `fastboot flashing unlock` | ❌ unknown command |
+| `fastboot flashing get_unlock_ability` | ✓ `1` (разрешено) |
+| `fastboot set_active a` | ❌ Slot Change not allowed in Lock State |
+| `fastboot continue` | ❌ Failed to load image: Load Error |
+| `fastboot oem fbreason` | ✓ Reason:LoadImageAndAuth Fail |
+| `fastboot oem shouhoujiance` | ✓ 10 МБ дамп логов |
+| `fastboot oem device-info` | ✓ Verity mode: true, unlocked: false |
+
+### Полный перебор (90+ команд)
+Проверено 48 getvar переменных + 60 OEM-команд.
+**Нет скрытых команд, нет обходных путей через fastboot.**
+
+### Официальные инструменты
+| Инструмент | Результат |
+|-----------|-----------|
+| Mi Unlock Tool 7.6.727.43 | ❌ Ошибка **20045** (регион аккаунта ≠ регион телефона) |
+| CPTool V1.6.3 Fastboot→EDL | ❌ Your account is unauthorized |
+| CPTool V1.4.4 BL Unlock | ❌ Требует патч < Feb 2026 |
+| CPTool V1.5.9 Temp Root | ❌ Требует работающий Android 16 |
+| Modified MiFlash Pro | ❌ Требует EDL |
+
+### Mi аккаунт
+✓ Отвязан через [i.mi.com](https://i.mi.com) → Find Device → Remove this device
+
+---
+
+## 🎯 ОСНОВНЫЕ ПУТИ ВОССТАНОВЛЕНИЯ
+
+### 🥇 Путь 1: Аппаратный EDL + Auth-Free Firehose (новый метод!)
+
+**Открытие от 6 мая 2026:** на DroidWin появился auth-free firehose для SD 8 Elite,
+подходит для hard-bricked устройств. Условия:
+- UFS должен быть НЕ Toshiba/Kioxia ✓ (у нас Samsung SM8 UFS)
+- Патч безопасности от Feb 2026 до Apr 2026 (у нас Oct 2026 — **может не сработать**)
+- Устройство должно войти в EDL (9008)
+
+**Шаги:**
+
+1. **Войти в EDL аппаратно:**
+   - Выключить телефон (Power 20 сек)
+   - Зажать Volume Up + Volume Down одновременно
+   - Не отпуская кнопки, подключить USB
+   - Проверить Device Manager → должен появиться "Qualcomm HS-USB QDLoader 9008"
+
+2. **Если EDL появился:**
+   - Скачать firehose: [DroidWin ссылка](https://droidwin.com/authentication-free-edl-firehose-unbrick-xiaomi-snapdragon-8-elite/)
+   - Прошить сначала abl partition
+   - Потом engineering ROM
+   - Если бутлоадер остался заблокирован — использовать unlock tool от 24 апреля
+
+**Статус:** НЕ пробовали. Рекомендуется первым делом.
+
+---
+
+### 🥈 Путь 2: UMcrew (TeamViewer сервис)
+
+- Telegram: [@UMcrew](https://t.me/UMcrew)
+- Схема: удалённое подключение через TeamViewer
+- Цена: ~$20-50
+- Мануал: https://teletype.in/@umcrew/4ZIljkFcy
+
+**Статус:** Написали 15 октября, ждём ответ.
+
+Готовое сообщение: [umcrew_package/сообщение_umcrew.txt](D:/xiaomi/umcrew_package/сообщение_umcrew.txt)
+
+---
+
+### 🥉 Путь 3: Three Tools GSM (резерв)
+
+- Telegram: [@three_tools_gsm](https://t.me/three_tools_gsm)
+- Аналог UMcrew, та же схема
+- Мануал: https://teletype.in/@3toolsgsm/edl_xiaomi_en
+
+**Статус:** Запасной вариант если UMcrew откажет.
+
+---
+
+### Путь 4: Mi Unlock с китайским аккаунтом (долго)
+
+1. Купить китайский номер (sms-activate.org, ~$1)
+2. Регистрация Mi-аккаунта на китайской версии
+3. Привязать телефон по IMEI
+4. Ждать **168 часов (7 дней)**
+5. Mi Unlock Tool → должен выдать токен
+6. После разблокировки восстановить recovery/vbmeta
+
+**Статус:** Не начинали. Долгий но надёжный путь.
+
+---
+
+### Путь 5: UMT Pro Dongle (платный донгл)
+
+- Цена: $60-80
+- Поддерживает SD 8 Elite с ноября 2024 (QcFire v13.6+)
+- Требует разборку и тестпоинты
+- Для самостоятельного восстановления
+
+**Статус:** Крайний вариант.
+
+---
+
+## 📁 Структура папки D:\xiaomi
+
+```
+D:\xiaomi\
+├── README.md                           # Этот файл
+├── pandora_recovery.py                 # GUI утилита диагностики
+├── pandora_last_chance.py              # Исчерпывающий перебор команд
+├── pandora-ota_full-OS4.0.2.0...zip    # Прошивка OS4 (9 GB)
+├── pandora-ota_full-OS3.0.319...zip    # Прошивка OS3 (8.5 GB)
+├── pandora_images_OS3...tgz            # Fastboot images (12 GB)
+├── xiaomi.eu_PANDORA_OS3...zip         # xiaomi.eu ROM
+├── adb\                                # ADB/Fastboot инструменты
+├── MiFlash20220507\                    # Mi Flash Tool
+├── miflash_pro-en-7.3.706.21\          # MiFlash Pro
+├── UnlockerBL_8EG5_v2_rus\             # Инструмент разблокировки (прошлый)
+├── BATCH_BL_TO_EDL-6.5.817.32\         # Fastboot→EDL (отказал)
+├── recovery_reports\                    # Отчёты диагностики
+├── last_chance_reports\                 # Отчёты полного перебора
+└── umcrew_package\                      # Пакет для сервиса
+    ├── ЧТО_ДЕЛАТЬ.txt
+    ├── сообщение_umcrew.txt
+    ├── РЕЗЕРВНЫЕ_СЕРВИСЫ.txt
+    ├── diagnostic_summary.txt
+    └── *.json (диагностические отчёты)
+```
+
+---
+
+## 🛠 Утилиты в репозитории
+
+### [pandora_recovery.py](pandora_recovery.py)
+GUI инструмент диагностики с кнопками:
+- Полная диагностика (все переменные fastboot)
+- Попытка EDL (4 метода)
+- Список разделов
+- Открыть отчёты
+
+### [pandora_last_chance.py](pandora_last_chance.py)
+Исчерпывающий перебор:
+- 48 getvar переменных
+- 60 OEM-команд (документированные + недокументированные)
+- Записывает всё в JSON отчёты
+
+### Запуск
+```powershell
+python D:\xiaomi\pandora_recovery.py
+python D:\xiaomi\pandora_last_chance.py
+```
+
+---
+
+## ⚠️ ВАЖНО — чего НЕ делать
+
+- ❌ Не прошивать через MiFlash наугад — anti-rollback убьёт телефон
+- ❌ Не соглашаться на "бесплатный обход" от незнакомцев
+- ❌ Не отдавать телефон в случайный местный сервис
+- ❌ Не делать `fastboot flash` без разблокировки
+- ❌ Не пробовать Toshiba/Kioxia firehose (у нас Samsung UFS, это нормально)
+
+---
+
+## 📊 Техническая справка
+
+### Chain of trust Qualcomm (почему нельзя взломать «в лоб»)
+1. **PBL** — зашит в маске чипа (ROM)
+2. PBL проверяет подпись firehose по ключам из **QFPROM** (физические предохранители)
+3. ABL проверяет подпись boot/recovery/vbmeta образов
+4. VBmeta проверяет подписи остальных разделов
+
+Любой unsigned код отклоняется на уровне ПЗУ. Единственные пути:
+- **Валидная подпись Xiaomi** (ключ не публичный)
+- **Эксплойт** (GBL exploit, патченный в марте 2026)
+- **Fault injection** (аппаратная атака, лаборатория)
+
+### Что такое auth-free firehose
+Утечка firehose-загрузчика, подписанного Xiaomi, но без привязки к конкретному
+аккаунту. Загрузчик загружается в EDL, принимает команды flash без запроса авторизации
+на сервере Xiaomi.
+
+---
+
+## 🔗 Полезные ссылки
+
+- [DroidWin — Auth-Free Firehose SD 8 Elite](https://droidwin.com/authentication-free-edl-firehose-unbrick-xiaomi-snapdragon-8-elite/)
+- [DroidWin — EDL Unbrick Skip Auth](https://droidwin.com/edl-unbrick-is-now-available-for-xiaomi-devices-skip-authentication/)
+- [GitHub — SD 8 Elite BL Unlock](https://github.com/panks/xiaomi-sd8eg5-bootloader-unlock-relock) (требует патч < Mar 2026)
+- [DroidWin — Authentication-Free EDL (Pack 1-4)](https://droidwin.com/edl-unbrick-is-now-available-for-xiaomi-devices-skip-authentication/)
+- [UMcrew мануал](https://teletype.in/@umcrew/4ZIljkFcy)
+- [Three Tools GSM мануал](https://teletype.in/@3toolsgsm/edl_xiaomi_en)
+- [66rom — Xiaomi 17 Pro инструмент v4.3](https://www.66rom.com/thread-46518-1-1.html)
+- [CPTool](https://cp-tool.com/)
+- [Xiaomi.eu — похожий случай](https://xiaomi.eu/community/threads/help-wtb-unbrick-service-for-xiaomi-17-pro-max-cn-version-edl-9008.76712/)
+
+---
+
+## 📝 Что делать сейчас (приоритет)
+
+1. **ПРЯМО СЕЙЧАС:** Попробовать аппаратный EDL (Vol Up + Vol Down + USB)
+2. **Если EDL сработал:** Скачать auth-free firehose с DroidWin
+3. **Параллельно:** Ждать ответа [@UMcrew](https://t.me/UMcrew)
+4. **Через 24 часа:** Если UMcrew молчит — писать [@three_tools_gsm](https://t.me/three_tools_gsm)
+5. **Если ничего не работает:** Начать создавать китайский Mi-аккаунт (неделя ожидания)
+
+---
+
+Создано с помощью Claude Code — AI-ассистент для разработки.
+
+---
+
+## 🔎 Дополнительные находки (15 октября 2026, вечер)
+
+Полный пересмотр инструментов на 2026 год. Проверены:
+
+### Публичные инструменты — все НЕ подходят
+
+| Инструмент | Статус | Почему не подходит |
+|-----------|--------|---------------------|
+| [AsInsideOut/miunlocktool](https://github.com/AsInsideOut/miunlocktool) (266⭐) | ❌ | Прямо исключает China ROM: "All HyperOS versions work EXCEPT China (CNXM)" |
+| [MlgmXyysd/xiaomi-hyperos-bootloader-bypass](https://github.com/MlgmXyysd/xiaomi-hyperos-bootloader-bypass) (3.5k⭐) | ❌ | Требует работающий Android для привязки аккаунта |
+| [panks/xiaomi-sd8eg5-bootloader-unlock-relock](https://github.com/panks/xiaomi-sd8eg5-bootloader-unlock-relock) | ❌ | Требует патч < март 2026, у нас октябрь |
+| GBL Exploit (март 2026) | ❌ | Патч Xiaomi HyperOS 3.0.304+ закрыл дыру, у нас новее |
+| Auth-free firehose (май 2026) | ❌ | Нужен вход в EDL, аппаратный ключ не работает |
+| CVE-2026-25262 (Sahara) | ❌ | Только для SM8450 (SD 8 Gen 1), у нас SM8850 |
+| CPTool V1.4.4 | ❌ | Патч < Feb 2026 |
+| CPTool V1.5.6 Fastboot→EDL | ❌ | Отказал: unauthorized |
+| CPTool V1.5.9 Temp Root | ❌ | Требует работающий Android 16 |
+
+### Коммерческие инструменты — подходят, но платные
+
+| Инструмент | Поддержка pandora | Цена |
+|-----------|-------------------|------|
+| **Z3X Pandora Box 9.24** | ✓ (Xiaomi 17 Pro) | Донгл ~$80-100 + credits |
+| **DFTPro Tool v7.0.0** | ✓ (pandora в списке) | Донгл ~$60-80 |
+| **UMT Pro QcFire v13.6** | ✓ (SD 8 Elite) | Донгл ~$60-80 |
+| **Hydra Tool** | ✓ | $55/год + донгл $78 |
+
+### Удалённые сервисы — доступны
+
+| Сервис | Контакт | Цена | Схема |
+|--------|---------|------|-------|
+| **UMcrew** | [@UMcrew](https://t.me/UMcrew) | ~$20-50 | TeamViewer |
+| **Three Tools GSM** | [@three_tools_gsm](https://t.me/three_tools_gsm) | ~$20-50 | TeamViewer |
+
+### Коды Powerup Reason (новое)
+
+Из диагностических отчётов замечены разные значения `Powerup Reason`:
+- `80001` — первый отчёт
+- `40011` — после рестарта
+- `80080` — последний
+
+Это коды Qualcomm PON (Power ON):
+- `0x80` = KPDPWR_N (кнопка питания)
+- `0x80000` = cold reboot
+- Разные значения показывают разные типы перезагрузки, не критично
+
+### Токен ДИНАМИЧЕСКИЙ
+
+Каждое чтение `getvar token` возвращает **новое значение**. Это
+challenge-response криптография — токен уникален для сессии и нельзя
+переиспользовать между перезагрузками. Это объясняет почему нельзя
+"сохранить токен один раз и использовать потом".
+
+### Окончательный вывод
+
+**Все бесплатные публичные пути — исчерпаны.** Их три категории:
+1. Требуют работающий Android (у нас не грузится)
+2. Требуют старый патч (у нас 2026-10-01, слишком новый)
+3. Требуют глобальный ROM (у нас китайский CNXM)
+
+**Остаются только два пути:**
+- Платные инструменты ($60-150) + самостоятельная работа с тестпоинтами
+- Удалённый сервис через TeamViewer (@UMcrew / @three_tools_gsm)
+
+Для рядового пользователя второй путь дешевле, быстрее и безопаснее.
+
+---
+
+## 🔬 Полная ревизия GitHub (15 октября 2026, ночь)
+
+Проверены крупные профильные репозитории:
+
+### Инструменты и эксплойты найденные на GitHub
+
+| Репо | Статус | Применимость |
+|------|--------|--------------|
+| [kasnria001/qualcomm_gbl_exploit_poc](https://github.com/kasnria001/qualcomm_gbl_exploit_poc) (972⭐) | ❌ | efisp erased + patch > Feb 2026 + Android не грузится |
+| [panks/xiaomi-sd8eg5-bootloader-unlock-relock](https://github.com/panks/xiaomi-sd8eg5-bootloader-unlock-relock) | ❌ | Враппер того же exploit, те же ограничения |
+| [bkerler/edl](https://github.com/bkerler/edl) (2.6k⭐) | ⚠️ | Главный EDL инструмент, НО требует firehose для SM8850 |
+| [bkerler/Loaders](https://github.com/bkerler/Loaders) (550⭐) | ❌ | Публичные loaders только до SDM855. Для SM8850 нет |
+| [MissMyTime/twrp_device_sm8850](https://github.com/MissMyTime/twrp_device_sm8850) | ⚠️ | TWRP для canoe (K90/K90PM/17 Ultra), pandora не поддержан |
+| [LokumKernel_SM8850](https://github.com/topics/lokumkernel) | ⚠️ | Исходники кастомного ядра для pandora. Нужна подпись |
+| [MlgmXyysd/xiaomi-hyperos-bootloader-bypass](https://github.com/MlgmXyysd/xiaomi-hyperos-bootloader-bypass) (3.5k⭐) | ❌ | Обход привязки аккаунта, но нужен работающий Android |
+| [AsInsideOut/miunlocktool](https://github.com/AsInsideOut/miunlocktool) (266⭐) | ❌ | "EXCEPT China (CNXM)" прямо исключён |
+| [linuxct/HyperSploit](https://github.com/linuxct/HyperSploit) | ❌ | Обход HyperOS, не для битых |
+
+### Что это окончательно подтверждает
+
+**На GitHub НЕТ:**
+1. Публичного firehose loader для SM8850 (SD 8 Elite Gen 5)
+2. Эксплойта работающего на патче 2026-10-01
+3. Инструмента для китайского ROM (CNXM) без Android
+4. TWRP специально для pandora
+5. Подписанных образов boot/recovery для OS4
+
+**На GitHub ЕСТЬ (но не помогает нам):**
+1. Исходники ядра pandora — можно собрать, но подписать нельзя
+2. TWRP для похожих устройств (canoe) — не для pandora
+3. Исходный GBL exploit — патченный на нашем устройстве
+4. Общий EDL framework — нет loader для нас
+
+### Главная техническая преграда
+
+GBL exploit работает так:
+1. Нужно записать `gbl_efi_unlock.efi` в раздел **efisp**
+2. При загрузке ABL прочитает его и выполнит код
+3. Код перезапишет lock state в RPMB
+
+**У нас три блокера:**
+- ❌ **efisp стёрт** (`fastboot erase efisp` до блокировки)
+- ❌ **Нельзя записать efisp** когда загрузчик заблокирован
+- ❌ **Патч закрыл дыру** в HyperOS 3.0.304+
+
+Это одновременно три защиты против одной атаки. Для нашей версии прошивки GBL exploit не применим.
+
+### Итог окончательный
+
+**На GitHub никто не выложил и не выложит код который бы помог в твоей конкретной ситуации** потому что:
+- Эксплойты закрыты патчем
+- CNXM ROM специально исключён публичными инструментами  
+- Для работы с заблокированным SM8850 нужны приватные ключи Xiaomi
+- Коммерческие сервисы специально не публикуют свои loaders
+
+Это объективное положение дел, не недостаток поиска.
+
+### Параллельное решение
+
+Пока нет публичного инструмента — **UMcrew / @three_tools_gsm** остаются единственным практичным путём. Эти сервисы работают потому что имеют:
+- Утечки подписанных firehose loaders (не публикуют публично)
+- Авторизованные Mi аккаунты
+- Опыт с конкретными моделями

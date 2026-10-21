@@ -1,0 +1,18 @@
+{
+  "codename": "miel",
+  "name": "Redmi Note 11 (Global/EU)",
+  "models": ["2201117SG", "2201117SI", "2201117SY", "2201117TG"],
+  "chip": "Snapdragon 680 (SM6225)",
+  "storage_type": "UFS 2.2",
+  "ufs_speeds_expected": {"read": 850, "write": 400},
+  "unlock_method": "mi_unlock",
+  "ota_paths": [],
+  "critical_partitions": {},
+  "tried_methods": [
+    ["fastboot getvar", "OK", "Стандартная диагностика"],
+    ["Mi Unlock Tool (xiaomi.com)", "OK", "Штатный путь — ждать 168+ часов"],
+    ["EDL через 9008 замыкание", "OK", "SD680 — Firehose publicly available"],
+    ["MiFlash", "OK", "Стандартная прошивка"],
+    ["TWRP (orangefox)", "OK", "Доступен для miel"]
+  ]
+}

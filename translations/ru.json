@@ -1,0 +1,40 @@
+{
+  "_meta": {"name": "Русский", "code": "ru"},
+
+  "app.title": "Pandora Unified — Xiaomi диагностика",
+  "app.subtitle": "Поддерживаемые устройства: {devices}",
+
+  "btn.diagnostic": "1. Полная диагностика",
+  "btn.ufs_check": "2. Проверить UFS",
+  "btn.bootfail": "3. Анализ bootfail",
+  "btn.compare": "4. Сравнить с прошивкой",
+  "btn.reports": "5. Отчёты",
+  "btn.lock_wizard": "🔒 Lock Wizard",
+  "btn.snapshot": "📸 Snapshot (бэкап)",
+  "btn.service_report": "🏥 Отчёт для сервиса",
+  "btn.ufs_health": "📊 UFS Health",
+  "btn.lessons": "📖 LESSONS_LEARNED",
+
+  "label.device": "Устройство:",
+  "label.auto_detect": "Автоопределение",
+  "label.language": "Язык:",
+
+  "status.ready": "Готов. Подключи телефон в Fastboot и выбери действие.",
+  "status.not_connected": "Телефон не подключён",
+
+  "tab.log": "  📋 Лог  ",
+  "tab.state": "  📊 Состояние  ",
+  "tab.bootfail": "  🔍 Bootfail  ",
+
+  "col.key": "Параметр",
+  "col.value": "Значение",
+
+  "msg.no_phone": "Телефон не найден! Проверь USB и Fastboot.",
+  "msg.detected": "📱 Устройство определено: {name} ({codename})",
+  "msg.chip_storage": "   Чип: {chip} · Хранилище: {storage}",
+  "msg.unknown_device": "⚠️  Устройство не распознано (product={product})",
+  "msg.limited_features": "   Профиль-зависимые функции (Compare, Lock Wizard) будут ограничены.",
+
+  "lock.title.exploit": "✅ ПРАВИЛЬНАЯ ПОСЛЕДОВАТЕЛЬНОСТЬ (эксплойт-разлочка, 3 шага):",
+  "lock.title.mi_unlock": "✅ ШТАТНАЯ БЛОКИРОВКА (Mi Unlock разлочка):"
+}

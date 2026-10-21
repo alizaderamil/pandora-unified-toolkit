@@ -1,0 +1,40 @@
+{
+  "_meta": {"name": "English", "code": "en"},
+
+  "app.title": "Pandora Unified — Xiaomi diagnostics",
+  "app.subtitle": "Supported devices: {devices}",
+
+  "btn.diagnostic": "1. Full diagnostic",
+  "btn.ufs_check": "2. Check UFS",
+  "btn.bootfail": "3. Bootfail analysis",
+  "btn.compare": "4. Compare with firmware",
+  "btn.reports": "5. Reports",
+  "btn.lock_wizard": "🔒 Lock Wizard",
+  "btn.snapshot": "📸 Snapshot (backup)",
+  "btn.service_report": "🏥 Service report",
+  "btn.ufs_health": "📊 UFS Health",
+  "btn.lessons": "📖 LESSONS_LEARNED",
+
+  "label.device": "Device:",
+  "label.auto_detect": "Auto-detect",
+  "label.language": "Language:",
+
+  "status.ready": "Ready. Connect phone in Fastboot and choose action.",
+  "status.not_connected": "Phone not detected",
+
+  "tab.log": "  📋 Log  ",
+  "tab.state": "  📊 State  ",
+  "tab.bootfail": "  🔍 Bootfail  ",
+
+  "col.key": "Parameter",
+  "col.value": "Value",
+
+  "msg.no_phone": "Phone not found! Check USB and Fastboot.",
+  "msg.detected": "📱 Device detected: {name} ({codename})",
+  "msg.chip_storage": "   Chip: {chip} · Storage: {storage}",
+  "msg.unknown_device": "⚠️  Device not recognized (product={product})",
+  "msg.limited_features": "   Profile-dependent features (Compare, Lock Wizard) will be limited.",
+
+  "lock.title.exploit": "✅ CORRECT SEQUENCE (exploit unlock, 3 steps):",
+  "lock.title.mi_unlock": "✅ STANDARD LOCK (Mi Unlock unlock):"
+}

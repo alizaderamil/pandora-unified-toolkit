@@ -1,0 +1,40 @@
+{
+  "_meta": {"name": "Azərbaycanca", "code": "az"},
+
+  "app.title": "Pandora Unified — Xiaomi diaqnostikası",
+  "app.subtitle": "Dəstəklənən cihazlar: {devices}",
+
+  "btn.diagnostic": "1. Tam diaqnostika",
+  "btn.ufs_check": "2. UFS yoxla",
+  "btn.bootfail": "3. Bootfail analizi",
+  "btn.compare": "4. Firmware ilə müqayisə",
+  "btn.reports": "5. Hesabatlar",
+  "btn.lock_wizard": "🔒 Kilid Sihirbazı",
+  "btn.snapshot": "📸 Snapshot (ehtiyat)",
+  "btn.service_report": "🏥 Servis hesabatı",
+  "btn.ufs_health": "📊 UFS Sağlamlıq",
+  "btn.lessons": "📖 LESSONS_LEARNED",
+
+  "label.device": "Cihaz:",
+  "label.auto_detect": "Avtomatik aşkar",
+  "label.language": "Dil:",
+
+  "status.ready": "Hazır. Telefonu Fastboot-a qoş və əməliyyat seç.",
+  "status.not_connected": "Telefon tapılmadı",
+
+  "tab.log": "  📋 Log  ",
+  "tab.state": "  📊 Vəziyyət  ",
+  "tab.bootfail": "  🔍 Bootfail  ",
+
+  "col.key": "Parametr",
+  "col.value": "Dəyər",
+
+  "msg.no_phone": "Telefon tapılmadı! USB və Fastboot-u yoxla.",
+  "msg.detected": "📱 Cihaz aşkarlandı: {name} ({codename})",
+  "msg.chip_storage": "   Çip: {chip} · Yaddaş: {storage}",
+  "msg.unknown_device": "⚠️  Cihaz tanınmadı (product={product})",
+  "msg.limited_features": "   Profilə bağlı funksiyalar (Compare, Lock Wizard) məhdud olacaq.",
+
+  "lock.title.exploit": "✅ DÜZGÜN ARDICILLIQ (exploit açılış, 3 addım):",
+  "lock.title.mi_unlock": "✅ STANDART KİLİD (Mi Unlock ilə açılmış):"
+}

@@ -1,0 +1,32 @@
+{
+  "_comment": "Template for a new device profile. Copy to <codename>.json and fill in.",
+  "codename": "your_codename_here",
+  "name": "Your Device Full Name",
+  "models": ["MODEL_NUMBER_1", "MODEL_NUMBER_2"],
+  "chip": "Processor name (e.g. Snapdragon 680 (SM6225))",
+  "storage_type": "UFS 3.1 / UFS 2.2 / eMMC 5.1",
+  "ufs_speeds_expected": {
+    "_comment": "Datasheet sequential speeds in MB/s. Omit this field if unknown.",
+    "read": 2000,
+    "write": 1500
+  },
+  "unlock_method": "mi_unlock_or_exploit",
+  "_unlock_method_choices": {
+    "mi_unlock": "Standard Xiaomi Mi Unlock Tool (needs Mi account + 168h wait)",
+    "exploit": "Unofficial exploit unlock — requires 3-step lock sequence to re-lock"
+  },
+  "ota_paths": [
+    "Full absolute paths to firmware files on disk, optional",
+    "D:/firmware/your_device_rom.zip"
+  ],
+  "critical_partitions": {
+    "_comment": "Expected partition sizes in bytes (from fastboot getvar partition-size:<name>). Empty = skip size check.",
+    "boot_a": 0,
+    "boot_b": 0,
+    "vbmeta_a": 0,
+    "super": 0
+  },
+  "tried_methods": [
+    ["Method name", "OK|FAIL|?", "Short reason / outcome"]
+  ]
+}

@@ -1,9 +1,13 @@
 """
-Pandora Unified 1.1 — Единая утилита для Xiaomi 17 Pro China (pandora)
+Pandora Unified 1.2 — Утилита для Xiaomi диагностики и прошивки
+
+Поддерживаемые устройства:
+  • pandora — Xiaomi 17 Pro China (SM8850, UFS 4.0)
+  • miel    — Redmi Note 11 (SD680, UFS 2.2)
 
 Заменяет pandora_recovery.py и pandora_last_chance.py.
 Исправляет баг с shouhoujiance, добавляет анализ bootfail дампа,
-проверку UFS, сравнение с OS4 OTA.
+проверку UFS, сравнение с прошивкой.
 
 v1.1 (2026-10-21, после chip-off ремонта):
   + Lock Wizard — правильная последовательность блокировки
@@ -11,6 +15,14 @@ v1.1 (2026-10-21, после chip-off ремонта):
   + Service Report — HTML отчёт для сервисного центра
   + Pre-flight confirm — предупреждение перед опасными командами
   + UFS Health — benchmark скорости после chip-off (baseline → compare)
+
+v1.2 (2026-10-21):
+  + Профиль устройств (DEVICE_PROFILES) — pandora и miel
+  + Автоопределение по product из fastboot
+  + Lock Wizard: два сценария — эксплойт (pandora) и Mi Unlock (miel)
+  + Compare использует OTA и размеры разделов из профиля
+  + Service Report — методы и выводы под детектированное устройство
+  + UFS Health — сравнение с паспортными скоростями профиля
 """
 import html
 import json
@@ -79,25 +91,125 @@ def adb_check():
     return False
 
 
-# Авторизованные/проверенные сервисы для Xiaomi 17 Pro China (SM8850)
+# Авторизованные/проверенные сервисы (общие для всех устройств)
 SERVICE_CONTACTS = [
     {
         "name": "Mobil Hafiz telefon servisi",
-        "method": "Chip-off NAND/UFS",
-        "price_aznish": "300 AZN",
+        "method": "Chip-off NAND/UFS/eMMC",
+        "price_aznish": "250-400 AZN (зависит от модели)",
         "warranty": "6 месяцев",
         "proven": True,
-        "notes": "Успешно восстановил этот телефон 2026-10-21. Инфракрасная станция.",
+        "notes": "Успешно восстановил pandora 2026-10-21. Инфракрасная станция.",
     },
     {
         "name": "UMcrew / @three_tools_gsm",
         "method": "Firehose loader (приватный)",
-        "price_aznish": "~$80-150",
+        "price_aznish": "~$30-150",
         "warranty": "Нет",
         "proven": False,
-        "notes": "Коммерческий Telegram-сервис, работает удалённо.",
+        "notes": "Коммерческий Telegram-сервис, работает удалённо. "
+                 "Для старых моделей (Redmi/Poco) дешевле чем для флагманов.",
     },
 ]
+
+
+PROFILES_DIR = Path(__file__).resolve().parent / "profiles"
+TRANSLATIONS_DIR = Path(__file__).resolve().parent / "translations"
+SETTINGS_FILE = Path(__file__).resolve().parent / ".pandora_settings.json"
+
+
+def _load_translations():
+    """Загружает все переводы из translations/*.json."""
+    trans = {}
+    if not TRANSLATIONS_DIR.exists():
+        return trans
+    for p in sorted(TRANSLATIONS_DIR.glob("*.json")):
+        if p.name.startswith("_"):
+            continue
+        try:
+            data = json.loads(p.read_text(encoding="utf-8"))
+            code = data.get("_meta", {}).get("code", p.stem)
+            trans[code] = data
+        except Exception as e:
+            print(f"[WARN] Failed to load translation {p.name}: {e}", file=sys.stderr)
+    return trans
+
+
+TRANSLATIONS = _load_translations()
+_CURRENT_LANG = "ru"  # default
+
+
+def set_lang(code):
+    global _CURRENT_LANG
+    if code in TRANSLATIONS:
+        _CURRENT_LANG = code
+
+
+def tr(key, **kwargs):
+    """Translate a key. Falls back to English, then to the key itself."""
+    for lang in (_CURRENT_LANG, "en"):
+        trans = TRANSLATIONS.get(lang, {})
+        if key in trans:
+            try:
+                return trans[key].format(**kwargs)
+            except Exception:
+                return trans[key]
+    return key
+
+
+def _load_settings():
+    if SETTINGS_FILE.exists():
+        try:
+            return json.loads(SETTINGS_FILE.read_text(encoding="utf-8"))
+        except Exception:
+            pass
+    return {}
+
+
+def _save_settings(settings):
+    try:
+        SETTINGS_FILE.write_text(json.dumps(settings, indent=2), encoding="utf-8")
+    except Exception:
+        pass
+
+
+# Загружаем язык из настроек
+_settings = _load_settings()
+if "lang" in _settings and _settings["lang"] in TRANSLATIONS:
+    _CURRENT_LANG = _settings["lang"]
+
+
+def _load_device_profiles():
+    """Загружает все профили устройств из profiles/*.json (кроме начинающихся с _)."""
+    profiles = {}
+    if not PROFILES_DIR.exists():
+        return profiles
+    for p in sorted(PROFILES_DIR.glob("*.json")):
+        if p.name.startswith("_"):
+            continue
+        try:
+            data = json.loads(p.read_text(encoding="utf-8"))
+            codename = data.get("codename", p.stem)
+            profiles[codename] = data
+        except Exception as e:
+            print(f"[WARN] Failed to load profile {p.name}: {e}", file=sys.stderr)
+    return profiles
+
+
+DEVICE_PROFILES = _load_device_profiles()
+
+
+def detect_device(variables):
+    """Определить профиль устройства по getvar переменным."""
+    product = variables.get("product", "").lower()
+    for key, profile in DEVICE_PROFILES.items():
+        if key in product:
+            return profile
+    model = variables.get("variant", "")
+    for key, profile in DEVICE_PROFILES.items():
+        if any(m.lower() in model.lower() for m in profile.get("models", [])):
+            return profile
+    return None
 
 
 # UFS производители (для auth-free firehose)
@@ -117,11 +229,13 @@ UFS_MANUFACTURERS = {
 class App:
     def __init__(self, root):
         self.root = root
-        root.title("Pandora Unified 1.1 — Xiaomi 17 Pro China")
+        root.title("Pandora Unified 1.2 — Xiaomi diagnostics (pandora + miel)")
         root.geometry("1200x860")
         root.configure(bg="#0a0f1e")
         self.busy = False
         self.device_data = {}
+        self.device_profile = None  # DEVICE_PROFILES[...] либо None
+        self.manual_device_override = False  # True если пользователь выбрал вручную
 
         self._setup_styles()
         self._build_ui()
@@ -145,48 +259,90 @@ class App:
         main = ttk.Frame(self.root, padding=18)
         main.pack(fill="both", expand=True)
 
+        # Заголовок
         header = ttk.Frame(main)
-        header.pack(fill="x", pady=(0, 12))
-        ttk.Label(header, text="Pandora Unified", style="H.TLabel").pack(anchor="w")
-        ttk.Label(header, text="Xiaomi 17 Pro China (pandora) · SD 8 Elite · Единая утилита 1.1",
-                  style="Sub.TLabel").pack(anchor="w", pady=(2, 0))
+        header.pack(fill="x", pady=(0, 10))
+        ttk.Label(header, text="Pandora Unified", style="H.TLabel").pack(side="left")
+        devices_list = ", ".join(f"{p['codename']}" for p in DEVICE_PROFILES.values())
+        self.subtitle_var = tk.StringVar(
+            value=tr("app.subtitle", devices=devices_list) + "  ·  v1.2"
+        )
+        ttk.Label(header, textvariable=self.subtitle_var,
+                  style="Sub.TLabel").pack(side="left", padx=(14, 0), pady=(10, 0))
+
+        # Селекторы — язык + устройство
+        selector_frame = ttk.Frame(main)
+        selector_frame.pack(fill="x", pady=(0, 10))
+
+        # Язык
+        ttk.Label(selector_frame, text=tr("label.language")).pack(side="left")
+        self.lang_var = tk.StringVar(value=_CURRENT_LANG)
+        lang_options = [(code, data["_meta"]["name"]) for code, data in TRANSLATIONS.items()]
+        self.lang_combo = ttk.Combobox(
+            selector_frame, textvariable=self.lang_var, width=14,
+            values=[f"{name} ({code})" for code, name in lang_options],
+            state="readonly",
+        )
+        # Устанавливаем текущее значение
+        for code, name in lang_options:
+            if code == _CURRENT_LANG:
+                self.lang_combo.set(f"{name} ({code})")
+                break
+        self.lang_combo.pack(side="left", padx=(6, 20))
+        self.lang_combo.bind("<<ComboboxSelected>>", self._on_lang_change)
+
+        # Устройство
+        ttk.Label(selector_frame, text=tr("label.device")).pack(side="left")
+        self.device_var = tk.StringVar(value=tr("label.auto_detect"))
+        device_values = [tr("label.auto_detect")] + [
+            f"{p['codename']} — {p['name']}" for p in DEVICE_PROFILES.values()
+        ]
+        self.device_combo = ttk.Combobox(
+            selector_frame, textvariable=self.device_var, width=42,
+            values=device_values, state="readonly",
+        )
+        self.device_combo.pack(side="left", padx=(6, 0))
+        self.device_combo.bind("<<ComboboxSelected>>", self._on_device_change)
 
         # Кнопки — ряд 1 (диагностика)
         btn_frame1 = ttk.Frame(main)
         btn_frame1.pack(fill="x", pady=(0, 6))
 
         self.buttons = []
+        self.button_keys = []  # (button, translation_key) для обновления при смене языка
         row1_actions = [
-            ("1. Полная диагностика", self.action_diagnostic),
-            ("2. Проверить UFS", self.action_ufs_check),
-            ("3. Анализ bootfail", self.action_bootfail),
-            ("4. Сравнить с OS4", self.action_compare_firmware),
-            ("5. Отчёты", self.action_open_reports),
+            ("btn.diagnostic", self.action_diagnostic),
+            ("btn.ufs_check", self.action_ufs_check),
+            ("btn.bootfail", self.action_bootfail),
+            ("btn.compare", self.action_compare_firmware),
+            ("btn.reports", self.action_open_reports),
         ]
-        for text, cmd in row1_actions:
-            b = ttk.Button(btn_frame1, text=text, command=cmd, style="Big.TButton")
+        for key, cmd in row1_actions:
+            b = ttk.Button(btn_frame1, text=tr(key), command=cmd, style="Big.TButton")
             b.pack(side="left", padx=(0, 6))
             self.buttons.append(b)
+            self.button_keys.append((b, key))
 
         # Кнопки — ряд 2 (защита + сервис + здоровье)
         btn_frame2 = ttk.Frame(main)
         btn_frame2.pack(fill="x", pady=(0, 12))
 
         row2_actions = [
-            ("🔒 Lock Wizard", self.action_lock_wizard),
-            ("📸 Snapshot (бэкап)", self.action_snapshot),
-            ("🏥 Отчёт для сервиса", self.action_service_report),
-            ("📊 UFS Health", self.action_ufs_health),
-            ("📖 LESSONS_LEARNED", self.action_open_lessons),
+            ("btn.lock_wizard", self.action_lock_wizard),
+            ("btn.snapshot", self.action_snapshot),
+            ("btn.service_report", self.action_service_report),
+            ("btn.ufs_health", self.action_ufs_health),
+            ("btn.lessons", self.action_open_lessons),
         ]
-        for text, cmd in row2_actions:
-            b = ttk.Button(btn_frame2, text=text, command=cmd, style="Big.TButton")
+        for key, cmd in row2_actions:
+            b = ttk.Button(btn_frame2, text=tr(key), command=cmd, style="Big.TButton")
             b.pack(side="left", padx=(0, 6))
             self.buttons.append(b)
+            self.button_keys.append((b, key))
 
         # Статус-бар
-        self.status = tk.StringVar(value="Готов. Подключи телефон в Fastboot и выбери действие.")
-        status_lbl = ttk.Label(main, textvariable=self.status, wraplength=1060,
+        self.status = tk.StringVar(value=tr("status.ready"))
+        status_lbl = ttk.Label(main, textvariable=self.status, wraplength=1140,
                                background="#1e293b", padding=(10, 8), relief="flat")
         status_lbl.pack(fill="x", pady=(0, 10))
 
@@ -196,7 +352,8 @@ class App:
 
         # Вкладка 1: Лог
         log_frame = ttk.Frame(self.notebook)
-        self.notebook.add(log_frame, text="  📋 Лог  ")
+        self.notebook.add(log_frame, text=tr("tab.log"))
+        self.log_tab_idx = 0
         self.log = scrolledtext.ScrolledText(log_frame, bg="#141b2d", fg="#e2e8f0",
                                              font=("Consolas", 9), insertbackground="#e2e8f0",
                                              wrap="word", state="disabled", relief="flat", bd=0)
@@ -208,10 +365,11 @@ class App:
 
         # Вкладка 2: Состояние
         state_frame = ttk.Frame(self.notebook)
-        self.notebook.add(state_frame, text="  📊 Состояние  ")
+        self.notebook.add(state_frame, text=tr("tab.state"))
+        self.state_tab_idx = 1
         self.state_tree = ttk.Treeview(state_frame, columns=("key", "value"), show="headings")
-        self.state_tree.heading("key", text="Параметр")
-        self.state_tree.heading("value", text="Значение")
+        self.state_tree.heading("key", text=tr("col.key"))
+        self.state_tree.heading("value", text=tr("col.value"))
         self.state_tree.column("key", width=320)
         self.state_tree.column("value", width=600)
         scroll1 = ttk.Scrollbar(state_frame, orient="vertical", command=self.state_tree.yview)
@@ -221,11 +379,63 @@ class App:
 
         # Вкладка 3: Bootfail
         bf_frame = ttk.Frame(self.notebook)
-        self.notebook.add(bf_frame, text="  🔍 Bootfail  ")
+        self.notebook.add(bf_frame, text=tr("tab.bootfail"))
+        self.bootfail_tab_idx = 2
         self.bf_text = scrolledtext.ScrolledText(bf_frame, bg="#141b2d", fg="#e2e8f0",
                                                   font=("Consolas", 9), wrap="word",
                                                   state="disabled", relief="flat", bd=0)
         self.bf_text.pack(fill="both", expand=True)
+
+    def _on_lang_change(self, event=None):
+        """Переключение языка."""
+        selection = self.lang_combo.get()
+        # Извлекаем код из "Name (code)"
+        m = re.search(r"\(([a-z]{2})\)$", selection)
+        if m:
+            new_code = m.group(1)
+            if new_code != _CURRENT_LANG:
+                set_lang(new_code)
+                settings = _load_settings()
+                settings["lang"] = new_code
+                _save_settings(settings)
+                self._refresh_ui_language()
+
+    def _refresh_ui_language(self):
+        """Обновить тексты кнопок, статуса, вкладок после смены языка."""
+        for btn, key in self.button_keys:
+            btn.configure(text=tr(key))
+        self.status.set(tr("status.ready"))
+        devices_list = ", ".join(f"{p['codename']}" for p in DEVICE_PROFILES.values())
+        self.subtitle_var.set(tr("app.subtitle", devices=devices_list) + "  ·  v1.2")
+        try:
+            self.notebook.tab(self.log_tab_idx, text=tr("tab.log"))
+            self.notebook.tab(self.state_tab_idx, text=tr("tab.state"))
+            self.notebook.tab(self.bootfail_tab_idx, text=tr("tab.bootfail"))
+        except Exception:
+            pass
+        try:
+            self.state_tree.heading("key", text=tr("col.key"))
+            self.state_tree.heading("value", text=tr("col.value"))
+        except Exception:
+            pass
+
+    def _on_device_change(self, event=None):
+        """Ручной выбор устройства (overrides auto-detect)."""
+        selection = self.device_combo.get()
+        if selection == tr("label.auto_detect"):
+            # Сброс — следующий _ensure_profile переопределит
+            self.device_profile = None
+            self.manual_device_override = False
+            self.write(f"ℹ️  {tr('label.device')} {tr('label.auto_detect')}")
+            return
+        # "codename — name" → извлекаем codename
+        codename = selection.split(" — ")[0].strip()
+        profile = DEVICE_PROFILES.get(codename)
+        if profile:
+            self.device_profile = profile
+            self.manual_device_override = True
+            self.write(tr("msg.detected", name=profile["name"], codename=profile["codename"]), "ok")
+            self.write(tr("msg.chip_storage", chip=profile["chip"], storage=profile["storage_type"]))
 
     def write(self, text, tag=None):
         self.log.configure(state="normal")
@@ -234,6 +444,56 @@ class App:
         self.log.see("end")
         self.log.configure(state="disabled")
         self.root.update_idletasks()
+
+    def _detect_and_announce_device(self, variables):
+        """Определить профиль устройства и записать в лог. Уважает ручной override."""
+        if self.manual_device_override and self.device_profile:
+            # Пользователь выбрал вручную — не переопределяем
+            self.write(
+                f"📌 {tr('label.device')} {self.device_profile['name']} "
+                f"(вручную, автоопределение пропущено)",
+                "ok",
+            )
+            return
+        profile = detect_device(variables)
+        self.device_profile = profile
+        if profile:
+            self.write(
+                tr("msg.detected", name=profile["name"], codename=profile["codename"]), "ok"
+            )
+            self.write(
+                tr("msg.chip_storage", chip=profile["chip"], storage=profile["storage_type"])
+            )
+        else:
+            product = variables.get("product", "?")
+            self.write(tr("msg.unknown_device", product=product), "warn")
+            self.write(tr("msg.limited_features"), "warn")
+
+    def _ensure_profile(self):
+        """
+        Для функций, которые могут быть вызваны без диагностики: собрать базовые
+        getvar и определить профиль. Возвращает True если профиль найден или
+        собраны хотя бы базовые переменные.
+        """
+        if self.device_profile:
+            return True
+        if "variables" in self.device_data and self.device_data["variables"]:
+            self._detect_and_announce_device(self.device_data["variables"])
+            return self.device_profile is not None
+
+        # Собираем через fastboot (быстро — только product, variant)
+        if not fb_check_usb():
+            return False
+        variables = {}
+        for var in ("product", "variant", "unlocked", "secure", "current-slot"):
+            rc, out = fb("getvar", var, timeout=3)
+            for line in out.splitlines():
+                m = re.match(r"\(bootloader\)\s*(.+?):\s*(.*)", line)
+                if m:
+                    variables[m.group(1).strip()] = m.group(2).strip()
+        self.device_data["variables"] = variables
+        self._detect_and_announce_device(variables)
+        return self.device_profile is not None
 
     def run_async(self, func):
         if self.busy:
@@ -254,12 +514,12 @@ class App:
         self.run_async(self._do_diagnostic)
 
     def _do_diagnostic(self):
-        self.status.set("Полная диагностика…")
-        self.write("═══ ДИАГНОСТИКА ═══", "hdr")
+        self.status.set(tr("btn.diagnostic") + "…")
+        self.write("═══ " + tr("btn.diagnostic") + " ═══", "hdr")
 
         if not fb_check_usb():
-            self.write("Телефон не найден! Проверь USB и Fastboot.", "err")
-            self.status.set("Телефон не подключён")
+            self.write(tr("msg.no_phone"), "err")
+            self.status.set(tr("status.not_connected"))
             return
 
         # getvar all
@@ -273,6 +533,9 @@ class App:
 
         self.device_data["variables"] = variables
         self.write(f"✓ Прочитано {len(variables)} переменных", "ok")
+
+        # Определяем профиль устройства
+        self._detect_and_announce_device(variables)
 
         # OEM diag
         self.write("Пробую OEM-команды…")
@@ -474,17 +737,21 @@ class App:
         self.run_async(self._do_compare)
 
     def _do_compare(self):
-        self.status.set("Сравниваю разделы с OS4 OTA…")
+        self.status.set("Сравниваю разделы с OTA прошивкой…")
         self.write("", "")
-        self.write("═══ СРАВНЕНИЕ С OS4 ═══", "hdr")
+        self.write("═══ СРАВНЕНИЕ С ПРОШИВКОЙ ═══", "hdr")
 
-        ota_paths = [
-            Path(r"D:\xiaomi\pandora-ota_full-OS4.0.2.0.XBLCNXM-user-17.0-0c778d15e7.zip"),
-            Path(r"D:\xiaomi\pandora-ota_full-OS3.0.319.0.WBLCNXM-user-16.0-2d01cf4d66.zip"),
-        ]
+        if not self._ensure_profile():
+            self.write("Устройство не распознано. Подключи телефон в fastboot.", "err")
+            return
 
+        profile = self.device_profile
+        self.write(f"Профиль: {profile['name']} ({profile['codename']})")
+
+        # Ищем OTA — сначала из профиля, потом даём выбрать вручную
         found_ota = None
-        for p in ota_paths:
+        for p_str in profile.get("ota_paths", []):
+            p = Path(p_str)
             if p.exists():
                 found_ota = p
                 self.write(f"✓ Найден OTA: {p.name}", "ok")
@@ -492,10 +759,12 @@ class App:
                 break
 
         if not found_ota:
-            self.write("OTA файлы не найдены в D:\\xiaomi\\", "err")
-            return
+            self.write("OTA по стандартным путям не найден.", "warn")
+            self.write("Открываю диалог выбора файла…")
+            self.root.after(0, self._pick_ota_file)
+            # Диалог откроется асинхронно; продолжим только сравнение разделов
 
-        # Сравнение разделов (только размеры из fastboot)
+        # Сравнение разделов
         if "variables" not in self.device_data:
             self.write("Сначала запусти диагностику (кнопка 1)", "warn")
             return
@@ -508,44 +777,55 @@ class App:
                 try:
                     size = int(v, 16) if v.startswith("0x") else int(v)
                     parts[name] = size
-                except:
+                except Exception:
                     pass
 
         self.write(f"Найдено разделов на телефоне: {len(parts)}")
 
-        # Проверяем ключевые
-        critical = {
-            "boot_a": 0x6000000,
-            "boot_b": 0x6000000,
-            "recovery_a": 0x6400000,
-            "recovery_b": 0x6400000,
-            "vbmeta_a": 0x20000,
-            "vbmeta_b": 0x20000,
-            "efisp": 0x300000,
-            "abl_a": 0x800000,
-            "abl_b": 0x800000,
-            "super": 0x320000000,
-        }
-
-        self.write("", "")
-        self.write("Ключевые разделы (размер факт vs ожидаемый):", "hdr")
-        all_ok = True
-        for name, expected in critical.items():
-            actual = parts.get(name, 0)
-            status = "✓" if actual == expected else "✗"
-            tag = "ok" if actual == expected else "err"
-            self.write(f"  {status} {name}: {actual:#x} ({expected:#x} ожидался)", tag)
-            if actual != expected:
-                all_ok = False
-
-        if all_ok:
+        critical = profile.get("critical_partitions", {})
+        if not critical:
+            # Для профилей без хардкода размеров — проверяем только наличие ключевых
             self.write("", "")
-            self.write("Структура разделов цела. Проблема в данных, не в GPT.", "ok")
+            self.write("Для этого устройства точные размеры разделов не захардкожены.", "warn")
+            self.write("Проверяю только НАЛИЧИЕ ключевых разделов:", "hdr")
+            expected_names = ["boot_a", "boot_b", "vbmeta_a", "vbmeta_b", "super",
+                              "recovery_a", "recovery_b", "abl_a", "abl_b"]
+            for name in expected_names:
+                size = parts.get(name)
+                if size:
+                    self.write(f"  ✓ {name}: {size:#x} ({size / 1024**2:.1f} МБ)", "ok")
+                else:
+                    self.write(f"  ✗ {name}: отсутствует", "err")
         else:
             self.write("", "")
-            self.write("Структура разделов нарушена!", "err")
+            self.write("Ключевые разделы (факт vs ожидаемый):", "hdr")
+            all_ok = True
+            for name, expected in critical.items():
+                actual = parts.get(name, 0)
+                status = "✓" if actual == expected else "✗"
+                tag = "ok" if actual == expected else "err"
+                self.write(f"  {status} {name}: {actual:#x} ({expected:#x} ожидался)", tag)
+                if actual != expected:
+                    all_ok = False
+            self.write("", "")
+            if all_ok:
+                self.write("Структура разделов цела. Проблема в данных, не в GPT.", "ok")
+            else:
+                self.write("Структура разделов нарушена!", "err")
 
         self.status.set("Сравнение завершено.")
+
+    def _pick_ota_file(self):
+        """Открывает диалог выбора OTA zip."""
+        path = filedialog.askopenfilename(
+            title="Выбери OTA прошивку (.zip)",
+            filetypes=[("OTA/Firmware zip", "*.zip *.tgz"), ("Все файлы", "*.*")],
+            initialdir=r"D:\xiaomi",
+        )
+        if path:
+            p = Path(path)
+            self.write(f"✓ Выбран файл: {p.name}", "ok")
+            self.write(f"  Размер: {p.stat().st_size / 1024**3:.2f} ГБ")
 
     # === 5. Открыть отчёты ===
     def action_open_reports(self):
@@ -583,12 +863,22 @@ class App:
 
     # === 🔒 Lock Wizard — правильная последовательность блокировки ===
     def action_lock_wizard(self):
+        # Пробуем определить профиль чтобы показать правильный сценарий
+        self._ensure_profile()
         self._show_lock_wizard()
 
     def _show_lock_wizard(self):
+        # Определяем какой сценарий показывать
+        if self.device_profile:
+            method = self.device_profile.get("unlock_method", "exploit")
+            device_name = self.device_profile["name"]
+        else:
+            method = "exploit"  # по умолчанию — pandora-сценарий
+            device_name = "неизвестное устройство"
+
         win = tk.Toplevel(self.root)
-        win.title("🔒 Lock Wizard — правильная блокировка bootloader")
-        win.geometry("820x680")
+        win.title(f"🔒 Lock Wizard — {device_name}")
+        win.geometry("860x720")
         win.configure(bg="#0a0f1e")
         win.transient(self.root)
 
@@ -596,47 +886,76 @@ class App:
         frame.pack(fill="both", expand=True)
 
         ttk.Label(frame, text="Правильная блокировка bootloader", style="H.TLabel").pack(anchor="w")
-        ttk.Label(
-            frame,
-            text="После НЕОФИЦИАЛЬНОЙ (эксплойт) разблокировки — следуй ТОЧНО этим шагам.",
-            style="Sub.TLabel",
-        ).pack(anchor="w", pady=(2, 12))
-
-        warning_frame = tk.Frame(frame, bg="#7f1d1d", padx=12, pady=10)
-        warning_frame.pack(fill="x", pady=(0, 12))
-        tk.Label(
-            warning_frame,
-            text="❌ НАША ОШИБКА 2026-10-15:",
-            bg="#7f1d1d", fg="#fecaca",
-            font=("Segoe UI", 11, "bold"),
-        ).pack(anchor="w")
-        tk.Label(
-            warning_frame,
-            text=(
-                "Выполнили:  fastboot erase efisp  →  fastboot oem lock\n"
-                "Результат:  Device unlocked:false, но Play Protect всё равно отказал,\n"
-                "            а потом телефон стуck в Fastboot и пришёл chip-off ремонт."
-            ),
-            bg="#7f1d1d", fg="#fecaca",
-            font=("Consolas", 9), justify="left",
-        ).pack(anchor="w", pady=(4, 0))
-
-        steps_text = scrolledtext.ScrolledText(
-            frame, bg="#141b2d", fg="#e2e8f0",
-            font=("Consolas", 10), wrap="word", height=18, relief="flat", bd=0,
+        subtitle = (
+            f"Устройство: {device_name} · метод: "
+            + ("ЭКСПЛОЙТ (3 шага)" if method == "exploit" else "Mi Unlock (штатный)")
         )
-        steps_text.pack(fill="both", expand=True)
+        ttk.Label(frame, text=subtitle, style="Sub.TLabel").pack(anchor="w", pady=(2, 12))
 
-        steps = """
-✅ ПРАВИЛЬНАЯ ПОСЛЕДОВАТЕЛЬНОСТЬ (3 шага):
+        # Переключатель метода (на случай если автоопределение неверное)
+        method_frame = ttk.Frame(frame)
+        method_frame.pack(fill="x", pady=(0, 10))
+        ttk.Label(method_frame, text="Метод разлочки:").pack(side="left")
+        method_var = tk.StringVar(value=method)
+
+        def rebuild():
+            win.destroy()
+            # Переоткрываем окно с новым методом
+            self._show_lock_wizard_with(method_var.get(), device_name)
+
+        for val, label in [("exploit", "Эксплойт (pandora и подобные)"),
+                           ("mi_unlock", "Mi Unlock (Redmi/Poco и штатные Xiaomi)")]:
+            ttk.Radiobutton(method_frame, text=label, variable=method_var,
+                            value=val, command=rebuild).pack(side="left", padx=(10, 0))
+
+        self._fill_lock_wizard_content(frame, method, win)
+
+    def _show_lock_wizard_with(self, method, device_name):
+        """Открыть wizard с заданным методом (после переключения radio)."""
+        win = tk.Toplevel(self.root)
+        win.title(f"🔒 Lock Wizard — {device_name}")
+        win.geometry("860x720")
+        win.configure(bg="#0a0f1e")
+        win.transient(self.root)
+        frame = ttk.Frame(win, padding=18)
+        frame.pack(fill="both", expand=True)
+        ttk.Label(frame, text="Правильная блокировка bootloader", style="H.TLabel").pack(anchor="w")
+        subtitle = (
+            f"Устройство: {device_name} · метод: "
+            + ("ЭКСПЛОЙТ (3 шага)" if method == "exploit" else "Mi Unlock (штатный)")
+        )
+        ttk.Label(frame, text=subtitle, style="Sub.TLabel").pack(anchor="w", pady=(2, 12))
+        self._fill_lock_wizard_content(frame, method, win)
+
+    def _fill_lock_wizard_content(self, frame, method, win):
+        """Содержимое Lock Wizard в зависимости от метода разлочки."""
+        if method == "exploit":
+            # Предупреждение про нашу ошибку
+            warning_frame = tk.Frame(frame, bg="#7f1d1d", padx=12, pady=10)
+            warning_frame.pack(fill="x", pady=(0, 12))
+            tk.Label(
+                warning_frame, text="❌ НАША ОШИБКА 2026-10-15 (pandora):",
+                bg="#7f1d1d", fg="#fecaca", font=("Segoe UI", 11, "bold"),
+            ).pack(anchor="w")
+            tk.Label(
+                warning_frame,
+                text=(
+                    "Выполнили:  fastboot erase efisp  →  fastboot oem lock\n"
+                    "Результат:  Device unlocked:false, но Play Protect всё равно отказал,\n"
+                    "            а потом телефон стуck в Fastboot и пришёл chip-off ремонт."
+                ),
+                bg="#7f1d1d", fg="#fecaca", font=("Consolas", 9), justify="left",
+            ).pack(anchor="w", pady=(4, 0))
+
+            steps = """
+✅ ПРАВИЛЬНАЯ ПОСЛЕДОВАТЕЛЬНОСТЬ (эксплойт-разлочка, 3 шага):
 
 ══════════════════════════════════════════════════════════════
 ШАГ 1. Прошить СТОКОВУЮ ОФИЦИАЛЬНУЮ прошивку
 ──────────────────────────────────────────────────────────────
    • Никаких Magisk, TWRP, кастомов, LSPosed.
    • Через MiFlash (БЕЗ флага clean_all_and_lock, обычный flash_all).
-   • Убедись что Android грузится и работает нормально.
-   • Проверь: Settings → About phone → MIUI version.
+   • Убедись что Android грузится нормально.
 
 ══════════════════════════════════════════════════════════════
 ШАГ 2. Удалить метку эксплойта из efisp
@@ -664,17 +983,81 @@ class App:
 ══════════════════════════════════════════════════════════════
 
 💡 Почему  fastboot oem lock  сам по себе НЕ работает:
-
    Эксплойт-разлочка оставляет следы в системных разделах,
    не только в efisp/RPMB. "oem lock" меняет lock state, но
    не чистит эти следы. Verified Boot при загрузке видит
    остатки и отказывает.
-
    Только  clean_all_and_lock  переписывает все разделы
    заново под Verified Boot атомарно.
 
 ══════════════════════════════════════════════════════════════
 """
+            can_make_batch = True
+        else:
+            # Mi Unlock сценарий (Redmi Note 11 и штатная Xiaomi разлочка)
+            info_frame = tk.Frame(frame, bg="#1e3a8a", padx=12, pady=10)
+            info_frame.pack(fill="x", pady=(0, 12))
+            tk.Label(
+                info_frame, text="ℹ️ Mi Unlock разлочка — штатная блокировка проста",
+                bg="#1e3a8a", fg="#dbeafe", font=("Segoe UI", 11, "bold"),
+            ).pack(anchor="w")
+            tk.Label(
+                info_frame,
+                text=(
+                    "Если ты разлочивал через официальный Mi Unlock Tool (xiaomi.com),\n"
+                    "то нет следов эксплойта в efisp — достаточно обычной прошивки и lock."
+                ),
+                bg="#1e3a8a", fg="#dbeafe", font=("Consolas", 9), justify="left",
+            ).pack(anchor="w", pady=(4, 0))
+
+            steps = """
+✅ ШТАТНАЯ БЛОКИРОВКА (Mi Unlock разлочка):
+
+══════════════════════════════════════════════════════════════
+ШАГ 1. Прошить СТОКОВУЮ ОФИЦИАЛЬНУЮ прошивку (fastboot ROM)
+──────────────────────────────────────────────────────────────
+   • Скачай fastboot ROM с xiaomi.eu / miuipolska / официального сайта.
+   • Через MiFlash с опцией "clean_all" (БЕЗ _and_lock пока).
+   • Убедись что Android грузится, Google Services работают.
+   • Проверь: Settings → About phone → версия MIUI/HyperOS.
+
+══════════════════════════════════════════════════════════════
+ШАГ 2. Перезагрузка в fastboot и блокировка
+──────────────────────────────────────────────────────────────
+       adb reboot bootloader
+       fastboot oem lock
+
+   ⚠️  Это сотрёт все данные!
+   ⚠️  Экран может показать "Press power to confirm" — подтверди.
+
+══════════════════════════════════════════════════════════════
+ШАГ 3. Загрузка и проверка
+──────────────────────────────────────────────────────────────
+   • Телефон перезагрузится, пройдёт первичную настройку.
+   • Проверь: Settings → About → Status → Verity → "green/verified"
+   • Play Protect certification должна пройти через несколько минут.
+
+══════════════════════════════════════════════════════════════
+
+💡 Отличие от эксплойт-разлочки:
+   • Mi Unlock использует АВТОРИЗАЦИЮ Xiaomi (твой Mi аккаунт).
+   • efisp не трогается, никаких следов эксплойта.
+   • Поэтому обычный "oem lock" работает без танцев.
+
+⚠️ Внимание:
+   • После блокировки повторная разлочка снова через Mi Unlock
+     потребует ждать 168+ часов на том же Mi аккаунте.
+   • На некоторых моделях (CN ROM) Mi Unlock уже недоступен —
+     тогда см. эксплойт-сценарий.
+══════════════════════════════════════════════════════════════
+"""
+            can_make_batch = True
+
+        steps_text = scrolledtext.ScrolledText(
+            frame, bg="#141b2d", fg="#e2e8f0",
+            font=("Consolas", 10), wrap="word", height=18, relief="flat", bd=0,
+        )
+        steps_text.pack(fill="both", expand=True)
         steps_text.insert("end", steps)
         steps_text.configure(state="disabled")
 
@@ -682,14 +1065,14 @@ class App:
         btn_bar = ttk.Frame(frame)
         btn_bar.pack(fill="x", pady=(12, 0))
 
-        def gen_batch():
-            """Сгенерировать .bat файл-напоминалку для шага 2."""
+        def gen_batch_exploit():
+            """Batch для шага 2 эксплойт-сценария (только erase efisp)."""
             REPORTS.mkdir(parents=True, exist_ok=True)
             ts = datetime.now().strftime("%Y%m%d-%H%M%S")
-            bat = REPORTS / f"{ts}-lock_step2.bat"
+            bat = REPORTS / f"{ts}-lock_step2_exploit.bat"
             bat.write_text(
                 f'@echo off\r\n'
-                f'echo === Lock Wizard: Step 2 ===\r\n'
+                f'echo === Lock Wizard: Exploit Step 2 ===\r\n'
                 f'echo.\r\n'
                 f'echo Это удалит метку эксплойт-разлочки из efisp.\r\n'
                 f'echo ПОСЛЕ этого НЕ грузи систему и запусти MiFlash с clean_all_and_lock.\r\n'
@@ -703,13 +1086,42 @@ class App:
                 encoding="cp866",
             )
             messagebox.showinfo(
-                "Сгенерирован batch",
-                f"Сохранён:\n{bat}\n\n"
-                "Запусти его когда будешь ГОТОВ к шагу 2.\n"
-                "Он выполнит только  fastboot erase efisp  и напомнит про шаг 3.",
+                "Batch сгенерирован",
+                f"Сохранён:\n{bat}\n\nЗапусти ТОЛЬКО когда готов к шагу 2.",
             )
 
-        ttk.Button(btn_bar, text="📝 Создать batch для шага 2", command=gen_batch).pack(side="left")
+        def gen_batch_mi_unlock():
+            """Batch для Mi Unlock блокировки — reboot bootloader + oem lock."""
+            REPORTS.mkdir(parents=True, exist_ok=True)
+            ts = datetime.now().strftime("%Y%m%d-%H%M%S")
+            bat = REPORTS / f"{ts}-lock_mi_unlock.bat"
+            bat.write_text(
+                f'@echo off\r\n'
+                f'echo === Lock Wizard: Mi Unlock Lock ===\r\n'
+                f'echo.\r\n'
+                f'echo Это заблокирует bootloader. ВСЕ ДАННЫЕ БУДУТ СТЁРТЫ!\r\n'
+                f'echo Убедись что прошивка стоковая (шаг 1 выполнен).\r\n'
+                f'echo.\r\n'
+                f'pause\r\n'
+                f'"{ADB}" reboot bootloader\r\n'
+                f'timeout /t 8 /nobreak\r\n'
+                f'"{FASTBOOT}" oem lock\r\n'
+                f'echo.\r\n'
+                f'echo Если телефон спрашивает подтверждение на экране — нажми Power.\r\n'
+                f'pause\r\n',
+                encoding="cp866",
+            )
+            messagebox.showinfo(
+                "Batch сгенерирован",
+                f"Сохранён:\n{bat}\n\n"
+                "⚠️ Запуск этого batch СОТРЁТ ВСЕ ДАННЫЕ!\n"
+                "Запускай ТОЛЬКО когда прошивка стоковая и ты уверен.",
+            )
+
+        gen_batch = gen_batch_exploit if method == "exploit" else gen_batch_mi_unlock
+        batch_label = ("📝 Создать batch для шага 2" if method == "exploit"
+                       else "📝 Создать batch для блокировки")
+        ttk.Button(btn_bar, text=batch_label, command=gen_batch).pack(side="left")
         ttk.Button(btn_bar, text="📖 Открыть LESSONS_LEARNED.md",
                    command=self.action_open_lessons).pack(side="left", padx=(8, 0))
         ttk.Button(btn_bar, text="Закрыть", command=win.destroy).pack(side="right")
@@ -804,6 +1216,34 @@ class App:
         self.write("  Храни этот файл перед любой опасной операцией!", "warn")
         self.status.set(f"Snapshot: {zip_path.name}")
 
+    def _conclusion_block(self, profile, tried_methods):
+        """HTML-блок с выводом в отчёте для сервиса."""
+        fails = [m for m in tried_methods if m[1] == "FAIL"]
+        if not fails:
+            return (
+                '<div class="warning" style="background:#eff6ff;border-left-color:#0284c7">'
+                '<b>Статус:</b> стандартные программные методы доступны. '
+                'Обращение в сервис обычно не требуется, если нет физических повреждений.'
+                '</div>'
+            )
+        # Для pandora и подобных — вывод о chip-off
+        codename = (profile or {}).get("codename", "")
+        if codename == "pandora":
+            return (
+                '<div class="warning">'
+                '<b>Вывод:</b> для CNXM ROM (Китай) + заблокированного SM8850 + стёртого efisp '
+                'публичных программных методов восстановления <b>не существует</b>. '
+                'Нужен либо коммерческий сервис с приватным Firehose loader, '
+                'либо физический chip-off ремонт NAND/UFS.'
+                '</div>'
+            )
+        return (
+            '<div class="warning">'
+            f'<b>Вывод:</b> часть программных методов не сработала ({len(fails)}). '
+            'Рекомендую обратиться в сервис с опытом по этой конкретной модели.'
+            '</div>'
+        )
+
     # === 🏥 Service Report — HTML отчёт для сервисного центра ===
     def action_service_report(self):
         self.run_async(self._do_service_report)
@@ -823,9 +1263,16 @@ class App:
                 if m:
                     variables[m.group(1).strip()] = m.group(2).strip()
             self.device_data["variables"] = variables
+            self._detect_and_announce_device(variables)
 
         if not variables:
             self.write("Нет данных диагностики. Запусти Полную диагностику или подключи телефон.", "warn")
+
+        # Профиль устройства
+        profile = self.device_profile
+        if not profile and variables:
+            profile = detect_device(variables)
+            self.device_profile = profile
 
         REPORTS.mkdir(parents=True, exist_ok=True)
         ts = datetime.now().strftime("%Y%m%d-%H%M%S")
@@ -849,15 +1296,15 @@ class App:
             cls = f' class="{tag}"' if tag else ""
             return f"<tr><td class='k'>{html.escape(k)}</td><td{cls}>{html.escape(str(v))}</td></tr>"
 
-        tried_methods = [
-            ("fastboot getvar / oem device-info", "OK", "Диагностика работает"),
-            ("MiFlash clean_all_and_lock", "FAIL", "Телефон не входит в EDL"),
-            ("EDL кабель (COM port)", "FAIL", "Требует подписанный Firehose loader для SM8850"),
-            ("TWRP boot (fastboot boot)", "FAIL", "Verified Boot блокирует неподписанные образы"),
-            ("GBL exploit (gbl_efi_unlock.efi)", "FAIL", "efisp стёрт + патч закрыл дыру в HyperOS 3.0.304+"),
-            ("UnlockerBL_8EG5_v2 повторно", "FAIL", "Требует разблокированный загрузчик"),
-            ("Публичные Firehose loaders", "FAIL", "Для SM8850 (Snapdragon 8 Elite) не опубликованы"),
-        ]
+        # Методы — из профиля, иначе generic fallback
+        if profile and profile.get("tried_methods"):
+            tried_methods = profile["tried_methods"]
+        else:
+            tried_methods = [
+                ("fastboot getvar", "OK", "Стандартная диагностика"),
+                ("MiFlash", "?", "Стандартный путь прошивки"),
+                ("EDL кабель", "?", "Зависит от доступности Firehose loader"),
+            ]
 
         services_html = ""
         for s in SERVICE_CONTACTS:
@@ -898,11 +1345,27 @@ class App:
         if not prev_html:
             prev_html = "<li><i>Нет предыдущих диагностик</i></li>"
 
+        # Данные устройства — из профиля либо из переменных
+        if profile:
+            dev_name = profile["name"]
+            dev_models = ", ".join(profile.get("models", []))
+            dev_chip = profile["chip"]
+            dev_storage = profile["storage_type"]
+            dev_codename = profile["codename"]
+        else:
+            dev_name = variables.get("product", "неизвестное устройство")
+            dev_models = variables.get("product", "?")
+            dev_chip = variables.get("cpuid", "?")
+            dev_storage = variables.get("variant", "?")
+            dev_codename = variables.get("product", "?")
+
+        serial = variables.get("serialno") or variables.get("device-serial") or "?"
+
         doc = f"""<!DOCTYPE html>
 <html lang="ru">
 <head>
 <meta charset="UTF-8">
-<title>Pandora — Отчёт для сервиса ({ts})</title>
+<title>{html.escape(dev_name)} — Отчёт для сервиса ({ts})</title>
 <style>
   body {{ font-family: -apple-system, Segoe UI, Roboto, sans-serif; max-width: 900px;
          margin: 20px auto; padding: 20px; background: #f8fafc; color: #0f172a; }}
@@ -937,11 +1400,11 @@ class App:
 <div class="meta">
   <h3>Устройство</h3>
   <table>
-    <tr><td class="k">Модель</td><td>Xiaomi 17 Pro China (25098PN5AC)</td></tr>
-    <tr><td class="k">Кодовое имя</td><td>pandora</td></tr>
-    <tr><td class="k">Процессор</td><td>Snapdragon 8 Elite (SM8850)</td></tr>
-    <tr><td class="k">UFS</td><td>{html.escape(variables.get("variant", "?"))}</td></tr>
-    <tr><td class="k">Серийный</td><td>d5835558</td></tr>
+    <tr><td class="k">Модель</td><td>{html.escape(dev_name)} ({html.escape(dev_models)})</td></tr>
+    <tr><td class="k">Кодовое имя</td><td>{html.escape(dev_codename)}</td></tr>
+    <tr><td class="k">Процессор</td><td>{html.escape(dev_chip)}</td></tr>
+    <tr><td class="k">Хранилище</td><td>{html.escape(dev_storage)} ({html.escape(variables.get("variant", "?"))})</td></tr>
+    <tr><td class="k">Серийный</td><td>{html.escape(serial)}</td></tr>
     <tr><td class="k">Отчёт сгенерирован</td><td>{datetime.now().strftime("%Y-%m-%d %H:%M:%S")}</td></tr>
   </table>
 </div>
@@ -957,12 +1420,7 @@ class App:
   {tried_html}
 </table>
 
-<div class="warning">
-  <b>Вывод:</b> для CNXM ROM (Китай) + заблокированного SM8850 + стёртого efisp
-  публичных программных методов восстановления <b>не существует</b>.
-  Нужен либо коммерческий сервис с приватным Firehose loader,
-  либо физический chip-off ремонт NAND/UFS.
-</div>
+{self._conclusion_block(profile, tried_methods)}
 
 <h2>📞 Проверенные/известные сервисы</h2>
 {services_html}
@@ -1025,10 +1483,19 @@ class App:
         codename = codename_out.strip()
         self.write(f"Устройство: {model} ({codename})")
 
-        # Предупреждение если это не pandora
-        if codename and "pandora" not in codename.lower():
-            self.write(f"⚠️  Внимание: это не pandora (codename={codename})", "warn")
-            self.write("   Baseline будет записан в отдельный файл для этого устройства.", "warn")
+        # Определяем профиль устройства (для ожидаемых скоростей)
+        profile = None
+        for key, p in DEVICE_PROFILES.items():
+            if key in codename.lower() or key in model.lower():
+                profile = p
+                break
+        if profile:
+            self.write(f"✓ Профиль: {profile['name']} ({profile['storage_type']})", "ok")
+            exp = profile.get("ufs_speeds_expected", {})
+            if exp:
+                self.write(f"  Ожидаемые скорости: чтение ~{exp['read']} МБ/с, запись ~{exp['write']} МБ/с")
+        else:
+            self.write(f"⚠️  Устройство ({codename}) не в списке профилей — ожидаемые скорости неизвестны", "warn")
 
         # Файл baseline отдельный для каждого устройства
         baseline_file = REPORTS / f"ufs_baseline_{codename or 'unknown'}.json"
@@ -1085,8 +1552,24 @@ class App:
             "write_mbs": write_mbs,
         }
 
+        # Сравнение с ожидаемыми скоростями из профиля (сразу, при первом замере)
+        if profile and profile.get("ufs_speeds_expected"):
+            exp = profile["ufs_speeds_expected"]
+            self.write("", "")
+            self.write(f"🎯 Сравнение с паспортными скоростями ({profile['storage_type']}):", "hdr")
+            if write_mbs and exp.get("write"):
+                ratio = write_mbs / exp["write"] * 100
+                tag = "ok" if ratio > 70 else ("warn" if ratio > 50 else "err")
+                self.write(f"   Запись: {ratio:.0f}% от ожидаемого ({write_mbs:.0f} из ~{exp['write']})", tag)
+            if read_mbs and exp.get("read"):
+                ratio = read_mbs / exp["read"] * 100
+                tag = "ok" if ratio > 70 else ("warn" if ratio > 50 else "err")
+                self.write(f"   Чтение: {ratio:.0f}% от ожидаемого ({read_mbs:.0f} из ~{exp['read']})", tag)
+
         # Baseline (отдельный для каждого устройства)
         if not baseline_file.exists():
+            if profile:
+                measurement["expected_speeds"] = profile.get("ufs_speeds_expected", {})
             baseline_file.write_text(json.dumps(measurement, indent=2), encoding="utf-8")
             self.write("", "")
             self.write(f"📌 BASELINE сохранён: {baseline_file.name}", "hdr")

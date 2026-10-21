@@ -1,0 +1,34 @@
+{
+  "codename": "pandora",
+  "name": "Xiaomi 17 Pro China",
+  "models": ["25098PN5AC"],
+  "chip": "Snapdragon 8 Elite (SM8850)",
+  "storage_type": "UFS 4.0",
+  "ufs_speeds_expected": {"read": 3700, "write": 2800},
+  "unlock_method": "exploit",
+  "ota_paths": [
+    "D:/xiaomi/pandora-ota_full-OS4.0.2.0.XBLCNXM-user-17.0-0c778d15e7.zip",
+    "D:/xiaomi/pandora-ota_full-OS3.0.319.0.WBLCNXM-user-16.0-2d01cf4d66.zip"
+  ],
+  "critical_partitions": {
+    "boot_a": 100663296,
+    "boot_b": 100663296,
+    "recovery_a": 104857600,
+    "recovery_b": 104857600,
+    "vbmeta_a": 131072,
+    "vbmeta_b": 131072,
+    "efisp": 3145728,
+    "abl_a": 8388608,
+    "abl_b": 8388608,
+    "super": 13421772800
+  },
+  "tried_methods": [
+    ["fastboot getvar / oem device-info", "OK", "Диагностика работает"],
+    ["MiFlash clean_all_and_lock", "FAIL", "Телефон не входит в EDL"],
+    ["EDL кабель (COM port)", "FAIL", "SM8850 требует подписанный Firehose loader"],
+    ["TWRP boot", "FAIL", "Verified Boot блокирует неподписанные образы"],
+    ["GBL exploit", "FAIL", "efisp стёрт + патч закрыл дыру в HyperOS 3.0.304+"],
+    ["UnlockerBL_8EG5_v2 повторно", "FAIL", "Требует разблокированный загрузчик"],
+    ["Публичные Firehose loaders", "FAIL", "Для SM8850 не опубликованы"]
+  ]
+}
