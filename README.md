@@ -1,3 +1,5 @@
+> **Review update (2026-10-21):** Lock Wizard is now a read-only reference; batch generation has been removed. Historical relock recipes, certification promises and lifespan estimates below are unverified and must not be used as instructions. See [review and remaining issues](docs/REVIEW-2026-10-21.md).
+
 # Pandora Unified — Xiaomi Diagnostics & Recovery Toolkit
 
 > Open-source GUI tool for diagnosing, backing up, and safely locking/unlocking Xiaomi phones.
