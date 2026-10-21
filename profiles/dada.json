@@ -1,0 +1,29 @@
+{
+  "codename": "dada",
+  "name": "Xiaomi 15",
+  "models": ["24129PN74C", "24129PN74G", "2410DPN6CC"],
+  "chip": "Snapdragon 8 Elite (SM8750-AB)",
+  "storage_type": "UFS 4.0 / UFS 3.1 (variant)",
+  "ufs_speeds_expected": {
+    "read": 3700,
+    "write": 2800
+  },
+  "unlock_method": "exploit",
+  "ota_paths": [],
+  "critical_partitions": {},
+  "tried_methods": [
+    ["fastboot getvar / oem device-info", "OK", "Standard diagnostic"],
+    ["Mi Unlock Tool (xiaomi.com)", "?", "Available for Global, NOT for CNXM ROM"],
+    ["EDL cable (COM port)", "?", "SM8750 Firehose loader status unknown publicly"],
+    ["MiFlash with clean_all_and_lock", "?", "Standard path if phone enters EDL"],
+    ["UnlockerBL_8EG5_v2", "?", "Exploit tool coverage for SM8750 not confirmed"]
+  ],
+  "tried_methods_ru": [
+    ["fastboot getvar / oem device-info", "OK", "Стандартная диагностика"],
+    ["Mi Unlock Tool (xiaomi.com)", "?", "Доступен для Global, НЕ для CNXM ROM"],
+    ["EDL кабель (COM port)", "?", "Статус Firehose loader для SM8750 публично неизвестен"],
+    ["MiFlash с clean_all_and_lock", "?", "Штатный путь если телефон входит в EDL"],
+    ["UnlockerBL_8EG5_v2", "?", "Покрытие эксплойта для SM8750 не подтверждено"]
+  ],
+  "_notes": "Partition sizes not yet captured — needs fastboot getvar all from a dada device. UFS 4.0 vs 3.1 depends on RAM/storage SKU (12/256 is UFS 3.1 on some variants). CNXM ROM suffix suggests exploit-only unlock path, like pandora."
+}

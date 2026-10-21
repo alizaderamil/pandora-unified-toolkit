@@ -54,7 +54,8 @@ The underlying mistake — that `fastboot oem lock` alone does NOT re-lock after
 
 | Codename | Device | Chip | Storage | Unlock method |
 |----------|--------|------|---------|---------------|
-| `pandora` | Xiaomi 17 Pro China | Snapdragon 8 Elite | UFS 4.0 | exploit |
+| `pandora` | Xiaomi 17 Pro China | Snapdragon 8 Elite (SM8850) | UFS 4.0 | exploit |
+| `dada` | Xiaomi 15 | Snapdragon 8 Elite (SM8750-AB) | UFS 4.0 / 3.1 | exploit (CN) / Mi Unlock (Global) |
 | `miel` | Redmi Note 11 | Snapdragon 680 | UFS 2.2 | Mi Unlock |
 
 **Your device not listed?** Adding one is a 10-minute JSON edit — see [profiles/README.md](profiles/README.md).
