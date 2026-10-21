@@ -1,0 +1,15 @@
+{
+  "name": "UMcrew / @three_tools_gsm",
+  "city": "Remote (Telegram)",
+  "country": "Global",
+  "method": "Firehose loader (private)",
+  "proven": false,
+  "price_en": "~$30-150 (cheaper for older Redmi/Poco, more for new flagships)",
+  "price_ru": "~$30-150 (дешевле для старых Redmi/Poco, дороже для новых флагманов)",
+  "warranty_en": "None",
+  "warranty_ru": "Нет",
+  "notes_en": "Commercial Telegram service with private Firehose loaders. Works remotely over team-viewer-style session.",
+  "notes_ru": "Коммерческий Telegram-сервис с приватными Firehose loader'ами. Работает удалённо через teamviewer-подобную сессию.",
+  "contact": "@three_tools_gsm on Telegram",
+  "covers": ["xiaomi", "redmi", "poco"]
+}

@@ -1,0 +1,15 @@
+{
+  "name": "Mobil Hafiz telefon servisi",
+  "city": "Baku",
+  "country": "Azerbaijan",
+  "method": "Chip-off NAND/UFS/eMMC",
+  "proven": true,
+  "price_en": "250-400 AZN (~$150-250, depends on model)",
+  "price_ru": "250-400 AZN (~$150-250, зависит от модели)",
+  "warranty_en": "6 months",
+  "warranty_ru": "6 месяцев",
+  "notes_en": "Successfully recovered pandora on 2026-10-21 after exploit-lock brick. Infrared station. Confirmed experience with Snapdragon 8 Elite.",
+  "notes_ru": "Успешно восстановил pandora 2026-10-21 после exploit-lock кирпича. Инфракрасная станция. Опыт с Snapdragon 8 Elite подтверждён.",
+  "contact": "WhatsApp recommended",
+  "covers": ["xiaomi", "redmi", "poco"]
+}

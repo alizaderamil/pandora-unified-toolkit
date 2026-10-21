@@ -7,6 +7,16 @@
   "ufs_speeds_expected": {"read": 850, "write": 400},
   "unlock_method": "mi_unlock",
   "ota_paths": [],
+  "firmware_links": [
+    {
+      "label": "XiaomiFirmwareUpdater (community index)",
+      "url": "https://xiaomifirmwareupdater.com/miui/miel/"
+    },
+    {
+      "label": "Xiaomi.eu custom ROMs",
+      "url": "https://xiaomi.eu/community/"
+    }
+  ],
   "critical_partitions": {},
   "tried_methods": [
     ["fastboot getvar", "OK", "Standard diagnostic"],

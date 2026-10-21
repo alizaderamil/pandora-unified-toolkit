@@ -96,40 +96,37 @@ def adb_check():
     return False
 
 
-# Авторизованные/проверенные сервисы (общие для всех устройств).
-# Поля _ru/_en позволяют i18n без копирования всей структуры.
-SERVICE_CONTACTS = [
-    {
-        "name": "Mobil Hafiz telefon servisi",
-        "method": "Chip-off NAND/UFS/eMMC",
-        "price_aznish_en": "250-400 AZN (depends on model)",
-        "price_aznish_ru": "250-400 AZN (зависит от модели)",
-        "warranty_en": "6 months",
-        "warranty_ru": "6 месяцев",
-        "proven": True,
-        "notes_en": "Successfully recovered pandora on 2026-10-21. Infrared station.",
-        "notes_ru": "Успешно восстановил pandora 2026-10-21. Инфракрасная станция.",
-    },
-    {
-        "name": "UMcrew / @three_tools_gsm",
-        "method": "Firehose loader (private)",
-        "price_aznish_en": "~$30-150",
-        "price_aznish_ru": "~$30-150",
-        "warranty_en": "None",
-        "warranty_ru": "Нет",
-        "proven": False,
-        "notes_en": "Commercial Telegram service, works remotely. "
-                    "For older models (Redmi/Poco) cheaper than for flagships.",
-        "notes_ru": "Коммерческий Telegram-сервис, работает удалённо. "
-                    "Для старых моделей (Redmi/Poco) дешевле чем для флагманов.",
-    },
-]
+SERVICES_DIR = Path(__file__).resolve().parent / "services"
+
+
+def _load_services():
+    """Загружает все записи сервисов из services/*.json."""
+    services = []
+    if not SERVICES_DIR.exists():
+        return services
+    for p in sorted(SERVICES_DIR.glob("*.json")):
+        if p.name.startswith("_"):
+            continue
+        try:
+            data = json.loads(p.read_text(encoding="utf-8"))
+            # Normalise: поля price_<lang> / price_aznish_<lang> совместимость
+            services.append(data)
+        except Exception as e:
+            print(f"[WARN] Failed to load service {p.name}: {e}", file=sys.stderr)
+    # Verified сначала
+    services.sort(key=lambda s: (not s.get("proven", False), s.get("name", "")))
+    return services
+
+
+SERVICE_CONTACTS = _load_services()
 
 
 def service_i18n(service, field):
-    """Pick language-aware service field with fallback."""
-    lang_key = f"{field}_{_CURRENT_LANG}"
-    return service.get(lang_key) or service.get(f"{field}_en") or service.get(field, "")
+    """Pick language-aware service field with fallback across naming schemes."""
+    for key in (f"{field}_{_CURRENT_LANG}", f"{field}_en", f"{field}_aznish_{_CURRENT_LANG}", f"{field}_aznish_en"):
+        if service.get(key):
+            return service[key]
+    return service.get(field, "")
 
 
 class Tooltip:
@@ -253,6 +250,66 @@ class DeviceMonitor:
 PROFILES_DIR = Path(__file__).resolve().parent / "profiles"
 TRANSLATIONS_DIR = Path(__file__).resolve().parent / "translations"
 SETTINGS_FILE = Path(__file__).resolve().parent / ".pandora_settings.json"
+DEVICE_HISTORY_FILE = Path(__file__).resolve().parent / "unified_reports" / "device_history.jsonl"
+
+
+def _log_device_seen(state):
+    """Append one line to device_history.jsonl when a new device is seen."""
+    if state.get("mode") == "none":
+        return
+    info = state.get("info", {})
+    key = (info.get("product") or info.get("model") or "").strip()
+    if not key:
+        return
+    try:
+        DEVICE_HISTORY_FILE.parent.mkdir(parents=True, exist_ok=True)
+        entry = {
+            "time": datetime.now().isoformat(timespec="seconds"),
+            "mode": state["mode"],
+            "product": info.get("product", ""),
+            "model": info.get("model", ""),
+            "locked": info.get("locked") or info.get("unlocked") or "",
+        }
+        # Dedup: не писать ту же запись подряд
+        if DEVICE_HISTORY_FILE.exists():
+            try:
+                last_line = DEVICE_HISTORY_FILE.read_text(encoding="utf-8").splitlines()[-1]
+                last = json.loads(last_line)
+                if (last.get("product") == entry["product"]
+                        and last.get("mode") == entry["mode"]
+                        and last.get("model") == entry["model"]):
+                    return  # дубликат — не пишем
+            except Exception:
+                pass
+        with open(DEVICE_HISTORY_FILE, "a", encoding="utf-8") as f:
+            f.write(json.dumps(entry, ensure_ascii=False) + "\n")
+    except Exception as e:
+        print(f"[device_history] write failed: {e}", file=sys.stderr)
+
+
+def _recent_devices(limit=5):
+    """Last N unique devices seen (dedup by product)."""
+    if not DEVICE_HISTORY_FILE.exists():
+        return []
+    try:
+        lines = DEVICE_HISTORY_FILE.read_text(encoding="utf-8").splitlines()
+    except Exception:
+        return []
+    seen = []
+    seen_keys = set()
+    for line in reversed(lines):
+        try:
+            entry = json.loads(line)
+        except Exception:
+            continue
+        key = entry.get("product") or entry.get("model")
+        if not key or key in seen_keys:
+            continue
+        seen_keys.add(key)
+        seen.append(entry)
+        if len(seen) >= limit:
+            break
+    return seen
 
 
 def _load_translations():
@@ -576,6 +633,11 @@ class App:
         mode = state["mode"]
         info = state["info"]
 
+        # Логируем в device_history (внутри сам дедуплицирует)
+        _log_device_seen(state)
+        # Обновляем Recent devices dropdown
+        self._refresh_recent_devices_menu()
+
         if mode == "fastboot":
             product = info.get("product", "?")
             unlocked = info.get("unlocked", "?")
@@ -684,6 +746,14 @@ class App:
         self.device_combo.pack(side="left", padx=(6, 0))
         self.device_combo.bind("<<ComboboxSelected>>", self._on_device_change)
 
+        # Recent devices — кнопка-меню
+        self.recent_btn = ttk.Menubutton(selector_frame, text="📜 Recent")
+        self.recent_menu = tk.Menu(self.recent_btn, tearoff=False)
+        self.recent_btn["menu"] = self.recent_menu
+        self.recent_btn.pack(side="left", padx=(10, 0))
+        Tooltip(self.recent_btn, lambda: "Devices seen in previous sessions. Click to filter / select.")
+        self._refresh_recent_devices_menu()
+
         # Кнопки — ряд 1 (диагностика)
         btn_frame1 = ttk.Frame(main)
         btn_frame1.pack(fill="x", pady=(0, 6))
@@ -757,6 +827,28 @@ class App:
             b.pack(side="left", padx=(0, 4))
             Tooltip(b, lambda k=tip_key: tr(k))
             self.log_action_btns.append((b, key))
+
+        # Contribute partition sizes — скрыта, появляется после диагностики на незнакомом профиле
+        self.contribute_btn = ttk.Button(
+            log_toolbar, text="🎁 Contribute partition sizes",
+            command=self.action_contribute_partitions,
+        )
+        Tooltip(
+            self.contribute_btn,
+            lambda: "Open a pre-filled GitHub issue with partition sizes from this device. "
+                    "Helps other users of the same model.",
+        )
+        # Не pack — покажем только когда есть что контрибьютить
+
+        # Firmware links — всегда доступна, открывает ссылки из профиля
+        self.firmware_btn = ttk.Button(
+            log_toolbar, text="📥 Firmware", command=self.action_firmware_links,
+        )
+        self.firmware_btn.pack(side="right", padx=(4, 0))
+        Tooltip(
+            self.firmware_btn,
+            lambda: "Open official firmware download pages for the active device profile.",
+        )
 
         self.log = scrolledtext.ScrolledText(log_frame, bg="#141b2d", fg="#e2e8f0",
                                              font=("Consolas", 9), insertbackground="#e2e8f0",
@@ -846,6 +938,38 @@ class App:
                 settings["lang"] = new_code
                 _save_settings(settings)
                 self._refresh_ui_language()
+
+    def _refresh_recent_devices_menu(self):
+        """Rebuild the Recent devices menu based on device_history.jsonl."""
+        if not hasattr(self, "recent_menu"):
+            return
+        self.recent_menu.delete(0, "end")
+        recent = _recent_devices(limit=8)
+        if not recent:
+            self.recent_menu.add_command(label="(no history yet)", state="disabled")
+            return
+        for entry in recent:
+            product = entry.get("product", "?")
+            mode = entry.get("mode", "?")
+            when = entry.get("time", "")[:16].replace("T", " ")
+            label = f"{product}  ({mode}, {when})"
+
+            def set_profile(prod=product):
+                # Если профиль есть — выставить его в селектор
+                for key, prof in DEVICE_PROFILES.items():
+                    if key in prod.lower():
+                        self.device_combo.set(f"{prof['codename']} — {prof['name']}")
+                        self._on_device_change()
+                        return
+                self.write(f"ℹ️  No profile for {prod} yet. Connect it to collect data.", "warn")
+
+            self.recent_menu.add_command(label=label, command=set_profile)
+        self.recent_menu.add_separator()
+        self.recent_menu.add_command(
+            label="Open device_history.jsonl",
+            command=lambda: os.startfile(str(DEVICE_HISTORY_FILE))
+            if DEVICE_HISTORY_FILE.exists() else None,
+        )
 
     def _btn_text(self, key, mode):
         """Button text with mode suffix (FB / ADB)."""
@@ -1117,7 +1241,100 @@ class App:
             "variables": variables,
             "oem_results": oem_results,
         })
+
+        # Partition crowdsource prompt — если профиль есть, но partition sizes пусты
+        self._maybe_offer_partition_pr(variables)
+
         self.status.set(f"Диагностика завершена. Прочитано {len(variables)} параметров.")
+
+    def _maybe_offer_partition_pr(self, variables):
+        """Если профиль устройства существует, но critical_partitions пустой —
+        предложить юзеру отправить размеры в репо через GitHub issue."""
+        profile = self.device_profile
+        if not profile:
+            return
+        critical = profile.get("critical_partitions") or {}
+        if critical:  # уже заполнены — ничего не делаем
+            return
+
+        # Собираем размеры разделов
+        parts = {}
+        for k, v in variables.items():
+            if k.startswith("partition-size:"):
+                name = k.replace("partition-size:", "").strip()
+                try:
+                    size = int(v, 16) if v.startswith("0x") else int(v)
+                    parts[name] = size
+                except Exception:
+                    pass
+        if not parts:
+            return
+
+        codename = profile.get("codename", "unknown")
+        self.write("", "")
+        self.write(f"🎁 Этот профиль ({codename}) не содержит partition sizes.", "hdr")
+        self.write(f"   Собрано {len(parts)} разделов — помоги другим юзерам, отправь данные в репо.", "ok")
+        self.write("   Нажми '🎁 Contribute partition sizes' в логе чтобы открыть GitHub issue.", None)
+
+        # Храним собранные данные для последующего использования кнопкой
+        self._pending_partition_data = {
+            "codename": codename,
+            "partitions": parts,
+            "variables_sample": {
+                k: v for k, v in variables.items()
+                if k in ("product", "variant", "cpuid", "security-patch-level")
+            },
+        }
+        # Обновляем лог toolbar — показываем кнопку contribute
+        try:
+            self.contribute_btn.pack(side="left", padx=(10, 0))
+        except Exception:
+            pass
+
+    def action_contribute_partitions(self):
+        """Открыть GitHub issue с собранными partition sizes."""
+        data = getattr(self, "_pending_partition_data", None)
+        if not data:
+            messagebox.showinfo(
+                "Nothing to contribute",
+                "Run Full diagnostic first on a device whose profile has no partition sizes.",
+            )
+            return
+
+        codename = data["codename"]
+        parts_json = json.dumps(
+            {k: hex(v) for k, v in data["partitions"].items()},
+            indent=2,
+        )
+        vars_sample = json.dumps(data["variables_sample"], indent=2)
+
+        issue_body = (
+            f"**Device profile:** `{codename}`\n\n"
+            f"**Variables sample:**\n```json\n{vars_sample}\n```\n\n"
+            f"**Partition sizes:**\n```json\n{parts_json}\n```\n\n"
+            f"This data was captured automatically by Pandora Unified "
+            f"{TOOL_VERSION} on {datetime.now().strftime('%Y-%m-%d')}. "
+            f"Please merge into `profiles/{codename}.json` → `critical_partitions`.\n\n"
+            f"Reviewer: convert hex to int before merging. The tool stores "
+            f"sizes as integers in JSON."
+        )
+        issue_title = f"[profile] Partition sizes for {codename}"
+
+        import urllib.parse
+        url = (
+            f"https://github.com/{GITHUB_REPO}/issues/new?"
+            f"title={urllib.parse.quote(issue_title)}&"
+            f"body={urllib.parse.quote(issue_body)}&"
+            f"labels=profile-contribution"
+        )
+        self.write(f"🌐 Opening GitHub issue draft for {codename}…", "ok")
+        try:
+            webbrowser.open(url)
+        except Exception as e:
+            self.write(f"Could not open browser: {e}", "err")
+            self.root.clipboard_clear()
+            self.root.clipboard_append(url)
+            self.write("URL copied to clipboard instead.", "warn")
 
     # === 2. UFS проверка (критична для auth-free firehose) ===
     def action_ufs_check(self):
@@ -1433,6 +1650,70 @@ class App:
         self.write(f"  Files included: {len(included)}")
         self.write("  Attach this zip to a GitHub issue or send to a technician.", "ok")
         self.status.set(f"Bundle: {bundle_path.name} ({bundle_path.stat().st_size / 1024:.0f} KB)")
+
+    # === 📥 Firmware links — открыть страницу загрузки прошивки для профиля ===
+    def action_firmware_links(self):
+        self._ensure_profile()
+        profile = self.device_profile
+        if not profile:
+            messagebox.showinfo(
+                "No profile",
+                "Connect a device in fastboot or pick one from the Device dropdown first.",
+            )
+            return
+        links = profile.get("firmware_links", [])
+        if not links:
+            messagebox.showinfo(
+                "No firmware links",
+                f"Profile {profile.get('codename', '?')} has no firmware_links. "
+                f"Add some via a PR to profiles/{profile.get('codename', 'x')}.json",
+            )
+            return
+
+        # Popup меню с ссылками
+        menu = tk.Menu(self.root, tearoff=False)
+        for link in links:
+            label = link.get("label", link.get("url", "?"))
+            url = link.get("url", "")
+            if not url:
+                continue
+            menu.add_command(
+                label=f"🌐 {label}",
+                command=lambda u=url: webbrowser.open(u),
+            )
+        menu.add_separator()
+        menu.add_command(
+            label=f"📝 Suggest a firmware link for {profile.get('codename')}…",
+            command=self._suggest_firmware_link,
+        )
+        # Показать под кнопкой
+        try:
+            x = self.firmware_btn.winfo_rootx()
+            y = self.firmware_btn.winfo_rooty() + self.firmware_btn.winfo_height()
+            menu.tk_popup(x, y)
+        finally:
+            menu.grab_release()
+
+    def _suggest_firmware_link(self):
+        """Открыть pre-filled GitHub issue для добавления firmware link."""
+        profile = self.device_profile
+        codename = profile.get("codename", "unknown") if profile else "unknown"
+        issue_body = (
+            f"**Device profile:** `{codename}`\n\n"
+            f"**Proposed firmware link:**\n\n"
+            f"- Label: _(e.g. XiaomiFirmwareUpdater · dada)_\n"
+            f"- URL: _(paste the full URL here)_\n\n"
+            f"**Why it's useful:** _(what's on that page — stable releases, "
+            f"community mirror, specific build…)_"
+        )
+        import urllib.parse
+        url = (
+            f"https://github.com/{GITHUB_REPO}/issues/new?"
+            f"title={urllib.parse.quote(f'[profile] Add firmware link for {codename}')}&"
+            f"body={urllib.parse.quote(issue_body)}&"
+            f"labels=profile-contribution"
+        )
+        webbrowser.open(url)
 
     # === Открыть LESSONS_LEARNED.md ===
     def action_open_lessons(self):
@@ -2063,7 +2344,8 @@ STEP 3. Boot and verify
             <div class="service">
               <h4>{html.escape(s['name'])} <span class="badge {badge_cls}">{badge}</span></h4>
               <p><b>{lbl_method}:</b> {html.escape(s['method'])}</p>
-              <p><b>{lbl_price}:</b> {html.escape(service_i18n(s, 'price_aznish'))} · <b>{lbl_warranty}:</b> {html.escape(service_i18n(s, 'warranty'))}</p>
+              <p><b>{lbl_price}:</b> {html.escape(service_i18n(s, 'price'))} · <b>{lbl_warranty}:</b> {html.escape(service_i18n(s, 'warranty'))}</p>
+              {('<p><small>📍 ' + html.escape(s.get('city', '')) + ', ' + html.escape(s.get('country', '')) + ' · ' + html.escape(s.get('contact', '')) + '</small></p>') if s.get('city') else ''}
               <p class="notes">{html.escape(service_i18n(s, 'notes'))}</p>
             </div>"""
 

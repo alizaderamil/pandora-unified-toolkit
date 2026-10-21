@@ -19,6 +19,12 @@
     "Full absolute paths to firmware files on disk, optional",
     "D:/firmware/your_device_rom.zip"
   ],
+  "firmware_links": [
+    {
+      "label": "Human-readable link name (shown in the dropdown)",
+      "url": "https://example.com/firmware-page-for-this-codename"
+    }
+  ],
   "critical_partitions": {
     "_comment": "Expected partition sizes in bytes (from fastboot getvar partition-size:<name>). Empty = skip size check.",
     "boot_a": 0,

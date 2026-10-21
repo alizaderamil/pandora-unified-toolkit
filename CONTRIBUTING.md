@@ -53,6 +53,17 @@ Example minimal profile:
 
 ---
 
+## Add a repair service (5 minutes)
+
+Help users in your city find a trustworthy shop for chip-off / firehose work.
+
+1. Copy `services/_template.json` to `services/<shopname>_<city>.json` (e.g. `tashkent_mobile_moscow.json`).
+2. Fill in name, city, country, method, price range, warranty, notes, contact.
+3. Only set `proven: true` if **you personally** recovered a device there. Secondhand reports should stay `proven: false`.
+4. Submit a PR with a one-line summary of your experience.
+
+See `services/README.md` for details.
+
 ## Add a translation (20 minutes)
 
 1. Copy an existing translation file:

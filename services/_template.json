@@ -1,0 +1,17 @@
+{
+  "_comment": "Template for a repair service entry. Copy to a city-based filename like <shopname>_<city>.json and fill in.",
+  "name": "Shop display name",
+  "city": "City (e.g. Moscow, Istanbul, Delhi)",
+  "country": "Country (e.g. Russia, Turkey, India)",
+  "method": "What they do (e.g. Chip-off NAND/UFS, EDL via Firehose, Mi Unlock service)",
+  "proven": false,
+  "_proven_note": "Set to true ONLY if the person adding this entry personally recovered a device there. Verified entries get a green badge in the Service Report.",
+  "price_en": "Approximate price range in local currency + USD estimate",
+  "price_ru": "Approximate price range in local currency + USD estimate (Russian text)",
+  "warranty_en": "Warranty length (e.g. 3 months)",
+  "warranty_ru": "Warranty length in Russian (e.g. 3 месяца)",
+  "notes_en": "Short free-form notes: who they are, what tools they have, their reputation. Keep under 2 sentences.",
+  "notes_ru": "Short free-form notes in Russian.",
+  "contact": "How to reach them (WhatsApp, Telegram, phone, website — not full numbers for privacy)",
+  "covers": ["xiaomi", "redmi", "poco", "other brands optional"]
+}

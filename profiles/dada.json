@@ -10,6 +10,16 @@
   },
   "unlock_method": "exploit",
   "ota_paths": [],
+  "firmware_links": [
+    {
+      "label": "XiaomiFirmwareUpdater (community index)",
+      "url": "https://xiaomifirmwareupdater.com/miui/dada/"
+    },
+    {
+      "label": "Xiaomi official download (Global)",
+      "url": "https://c.mi.com/global/post/download"
+    }
+  ],
   "critical_partitions": {},
   "tried_methods": [
     ["fastboot getvar / oem device-info", "OK", "Standard diagnostic"],
