@@ -1,23 +1,37 @@
 """
-Pandora Unified 1.0 — Единая утилита для Xiaomi 17 Pro China (pandora)
+Pandora Unified 1.1 — Единая утилита для Xiaomi 17 Pro China (pandora)
 
 Заменяет pandora_recovery.py и pandora_last_chance.py.
 Исправляет баг с shouhoujiance, добавляет анализ bootfail дампа,
 проверку UFS, сравнение с OS4 OTA.
+
+v1.1 (2026-10-21, после chip-off ремонта):
+  + Lock Wizard — правильная последовательность блокировки
+  + Snapshot — бэкап getvar/token перед опасной операцией
+  + Service Report — HTML отчёт для сервисного центра
+  + Pre-flight confirm — предупреждение перед опасными командами
+  + UFS Health — benchmark скорости после chip-off (baseline → compare)
 """
+import html
 import json
 import os
 import re
 import subprocess
 import sys
 import threading
+import time
 import tkinter as tk
+import webbrowser
+import zipfile
 from tkinter import ttk, scrolledtext, filedialog, messagebox
 from datetime import datetime
 from pathlib import Path
 
 FASTBOOT = r"D:\xiaomi\adb\fastboot.exe"
+ADB = r"D:\xiaomi\adb\adb.exe"
 REPORTS = Path(__file__).resolve().parent / "unified_reports"
+LESSONS = Path(__file__).resolve().parent / "LESSONS_LEARNED.md"
+UFS_BASELINE = REPORTS / "ufs_baseline.json"
 
 
 def fb(*args, timeout=10):
@@ -41,6 +55,51 @@ def fb_check_usb():
     return "fastboot" in out.lower()
 
 
+def adb_cmd(*args, timeout=15):
+    """Безопасный вызов adb."""
+    try:
+        r = subprocess.run(
+            [ADB] + list(args),
+            capture_output=True, text=True, timeout=timeout,
+            creationflags=subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0,
+        )
+        return r.returncode, (r.stdout + r.stderr).strip()
+    except subprocess.TimeoutExpired:
+        return -1, "TIMEOUT"
+    except Exception as e:
+        return -1, str(e)
+
+
+def adb_check():
+    """Проверка adb-соединения (телефон загружен в Android)."""
+    rc, out = adb_cmd("devices", timeout=3)
+    for line in out.splitlines():
+        if "\tdevice" in line:
+            return True
+    return False
+
+
+# Авторизованные/проверенные сервисы для Xiaomi 17 Pro China (SM8850)
+SERVICE_CONTACTS = [
+    {
+        "name": "Mobil Hafiz telefon servisi",
+        "method": "Chip-off NAND/UFS",
+        "price_aznish": "300 AZN",
+        "warranty": "6 месяцев",
+        "proven": True,
+        "notes": "Успешно восстановил этот телефон 2026-10-21. Инфракрасная станция.",
+    },
+    {
+        "name": "UMcrew / @three_tools_gsm",
+        "method": "Firehose loader (приватный)",
+        "price_aznish": "~$80-150",
+        "warranty": "Нет",
+        "proven": False,
+        "notes": "Коммерческий Telegram-сервис, работает удалённо.",
+    },
+]
+
+
 # UFS производители (для auth-free firehose)
 UFS_MANUFACTURERS = {
     "SM": ("Samsung", True, "Поддерживается auth-free firehose ✓"),
@@ -58,8 +117,8 @@ UFS_MANUFACTURERS = {
 class App:
     def __init__(self, root):
         self.root = root
-        root.title("Pandora Unified 1.0 — Xiaomi 17 Pro China")
-        root.geometry("1100x820")
+        root.title("Pandora Unified 1.1 — Xiaomi 17 Pro China")
+        root.geometry("1200x860")
         root.configure(bg="#0a0f1e")
         self.busy = False
         self.device_data = {}
@@ -89,23 +148,39 @@ class App:
         header = ttk.Frame(main)
         header.pack(fill="x", pady=(0, 12))
         ttk.Label(header, text="Pandora Unified", style="H.TLabel").pack(anchor="w")
-        ttk.Label(header, text="Xiaomi 17 Pro China (pandora) · SD 8 Elite · Единая утилита 1.0",
+        ttk.Label(header, text="Xiaomi 17 Pro China (pandora) · SD 8 Elite · Единая утилита 1.1",
                   style="Sub.TLabel").pack(anchor="w", pady=(2, 0))
 
-        # Кнопки
-        btn_frame = ttk.Frame(main)
-        btn_frame.pack(fill="x", pady=(0, 12))
+        # Кнопки — ряд 1 (диагностика)
+        btn_frame1 = ttk.Frame(main)
+        btn_frame1.pack(fill="x", pady=(0, 6))
 
         self.buttons = []
-        actions = [
+        row1_actions = [
             ("1. Полная диагностика", self.action_diagnostic),
             ("2. Проверить UFS", self.action_ufs_check),
             ("3. Анализ bootfail", self.action_bootfail),
             ("4. Сравнить с OS4", self.action_compare_firmware),
             ("5. Отчёты", self.action_open_reports),
         ]
-        for text, cmd in actions:
-            b = ttk.Button(btn_frame, text=text, command=cmd, style="Big.TButton")
+        for text, cmd in row1_actions:
+            b = ttk.Button(btn_frame1, text=text, command=cmd, style="Big.TButton")
+            b.pack(side="left", padx=(0, 6))
+            self.buttons.append(b)
+
+        # Кнопки — ряд 2 (защита + сервис + здоровье)
+        btn_frame2 = ttk.Frame(main)
+        btn_frame2.pack(fill="x", pady=(0, 12))
+
+        row2_actions = [
+            ("🔒 Lock Wizard", self.action_lock_wizard),
+            ("📸 Snapshot (бэкап)", self.action_snapshot),
+            ("🏥 Отчёт для сервиса", self.action_service_report),
+            ("📊 UFS Health", self.action_ufs_health),
+            ("📖 LESSONS_LEARNED", self.action_open_lessons),
+        ]
+        for text, cmd in row2_actions:
+            b = ttk.Button(btn_frame2, text=text, command=cmd, style="Big.TButton")
             b.pack(side="left", padx=(0, 6))
             self.buttons.append(b)
 
@@ -476,6 +551,584 @@ class App:
     def action_open_reports(self):
         REPORTS.mkdir(parents=True, exist_ok=True)
         os.startfile(str(REPORTS))
+
+    # === Открыть LESSONS_LEARNED.md ===
+    def action_open_lessons(self):
+        if LESSONS.exists():
+            os.startfile(str(LESSONS))
+        else:
+            messagebox.showwarning(
+                "LESSONS_LEARNED.md не найден",
+                f"Файл отсутствует:\n{LESSONS}\n\n"
+                "Скачай его из репозитория "
+                "https://github.com/alizaderamil/xiaomi-pandora-recovery",
+            )
+
+    # === Pre-flight confirm — универсальная защита перед опасной операцией ===
+    def _confirm_dangerous(self, title, what, consequences, reference=None):
+        """
+        Модальное окно подтверждения опасной операции.
+        Возвращает True если пользователь согласился продолжить.
+        """
+        msg = (
+            f"⚠️  ОПАСНАЯ ОПЕРАЦИЯ: {title}\n\n"
+            f"Что произойдёт:\n{what}\n\n"
+            f"Последствия:\n{consequences}\n\n"
+        )
+        if reference:
+            msg += f"Прочитай: {reference}\n\n"
+        msg += "Прочитал LESSONS_LEARNED.md и уверен?\n"
+        msg += "(Нажми 'Нет' если сомневаешься — ничего не выполнится)"
+        return messagebox.askyesno(title, msg, icon="warning", default="no")
+
+    # === 🔒 Lock Wizard — правильная последовательность блокировки ===
+    def action_lock_wizard(self):
+        self._show_lock_wizard()
+
+    def _show_lock_wizard(self):
+        win = tk.Toplevel(self.root)
+        win.title("🔒 Lock Wizard — правильная блокировка bootloader")
+        win.geometry("820x680")
+        win.configure(bg="#0a0f1e")
+        win.transient(self.root)
+
+        frame = ttk.Frame(win, padding=18)
+        frame.pack(fill="both", expand=True)
+
+        ttk.Label(frame, text="Правильная блокировка bootloader", style="H.TLabel").pack(anchor="w")
+        ttk.Label(
+            frame,
+            text="После НЕОФИЦИАЛЬНОЙ (эксплойт) разблокировки — следуй ТОЧНО этим шагам.",
+            style="Sub.TLabel",
+        ).pack(anchor="w", pady=(2, 12))
+
+        warning_frame = tk.Frame(frame, bg="#7f1d1d", padx=12, pady=10)
+        warning_frame.pack(fill="x", pady=(0, 12))
+        tk.Label(
+            warning_frame,
+            text="❌ НАША ОШИБКА 2026-10-15:",
+            bg="#7f1d1d", fg="#fecaca",
+            font=("Segoe UI", 11, "bold"),
+        ).pack(anchor="w")
+        tk.Label(
+            warning_frame,
+            text=(
+                "Выполнили:  fastboot erase efisp  →  fastboot oem lock\n"
+                "Результат:  Device unlocked:false, но Play Protect всё равно отказал,\n"
+                "            а потом телефон стуck в Fastboot и пришёл chip-off ремонт."
+            ),
+            bg="#7f1d1d", fg="#fecaca",
+            font=("Consolas", 9), justify="left",
+        ).pack(anchor="w", pady=(4, 0))
+
+        steps_text = scrolledtext.ScrolledText(
+            frame, bg="#141b2d", fg="#e2e8f0",
+            font=("Consolas", 10), wrap="word", height=18, relief="flat", bd=0,
+        )
+        steps_text.pack(fill="both", expand=True)
+
+        steps = """
+✅ ПРАВИЛЬНАЯ ПОСЛЕДОВАТЕЛЬНОСТЬ (3 шага):
+
+══════════════════════════════════════════════════════════════
+ШАГ 1. Прошить СТОКОВУЮ ОФИЦИАЛЬНУЮ прошивку
+──────────────────────────────────────────────────────────────
+   • Никаких Magisk, TWRP, кастомов, LSPosed.
+   • Через MiFlash (БЕЗ флага clean_all_and_lock, обычный flash_all).
+   • Убедись что Android грузится и работает нормально.
+   • Проверь: Settings → About phone → MIUI version.
+
+══════════════════════════════════════════════════════════════
+ШАГ 2. Удалить метку эксплойта из efisp
+──────────────────────────────────────────────────────────────
+   Перезагрузи в fastboot и выполни ТОЛЬКО это:
+
+       fastboot erase efisp
+
+   ⚠️  НЕ выполняй сейчас  fastboot oem lock !
+   ⚠️  НЕ загружай систему между шагами 2 и 3!
+
+══════════════════════════════════════════════════════════════
+ШАГ 3. Повторная прошивка с флагом clean_all_and_lock
+──────────────────────────────────────────────────────────────
+   Из fastboot (система не загружалась) запусти MiFlash снова:
+
+       miflash_pro.exe → выбери ту же прошивку →
+       → опция "clean_all_and_lock" (clear_all_lock) → Flash
+
+   После этого телефон:
+       • перезагрузится в стоковый Android
+       • bootloader будет ЗАЛОЧЕН
+       • Verified Boot зелёный, Play Protect пройдёт
+
+══════════════════════════════════════════════════════════════
+
+💡 Почему  fastboot oem lock  сам по себе НЕ работает:
+
+   Эксплойт-разлочка оставляет следы в системных разделах,
+   не только в efisp/RPMB. "oem lock" меняет lock state, но
+   не чистит эти следы. Verified Boot при загрузке видит
+   остатки и отказывает.
+
+   Только  clean_all_and_lock  переписывает все разделы
+   заново под Verified Boot атомарно.
+
+══════════════════════════════════════════════════════════════
+"""
+        steps_text.insert("end", steps)
+        steps_text.configure(state="disabled")
+
+        # Кнопки
+        btn_bar = ttk.Frame(frame)
+        btn_bar.pack(fill="x", pady=(12, 0))
+
+        def gen_batch():
+            """Сгенерировать .bat файл-напоминалку для шага 2."""
+            REPORTS.mkdir(parents=True, exist_ok=True)
+            ts = datetime.now().strftime("%Y%m%d-%H%M%S")
+            bat = REPORTS / f"{ts}-lock_step2.bat"
+            bat.write_text(
+                f'@echo off\r\n'
+                f'echo === Lock Wizard: Step 2 ===\r\n'
+                f'echo.\r\n'
+                f'echo Это удалит метку эксплойт-разлочки из efisp.\r\n'
+                f'echo ПОСЛЕ этого НЕ грузи систему и запусти MiFlash с clean_all_and_lock.\r\n'
+                f'echo.\r\n'
+                f'pause\r\n'
+                f'"{FASTBOOT}" erase efisp\r\n'
+                f'echo.\r\n'
+                f'echo Теперь: закрой это окно, открой MiFlash, прошей ту же прошивку\r\n'
+                f'echo с опцией clean_all_and_lock. НЕ ПЕРЕЗАГРУЖАЙ В СИСТЕМУ!\r\n'
+                f'pause\r\n',
+                encoding="cp866",
+            )
+            messagebox.showinfo(
+                "Сгенерирован batch",
+                f"Сохранён:\n{bat}\n\n"
+                "Запусти его когда будешь ГОТОВ к шагу 2.\n"
+                "Он выполнит только  fastboot erase efisp  и напомнит про шаг 3.",
+            )
+
+        ttk.Button(btn_bar, text="📝 Создать batch для шага 2", command=gen_batch).pack(side="left")
+        ttk.Button(btn_bar, text="📖 Открыть LESSONS_LEARNED.md",
+                   command=self.action_open_lessons).pack(side="left", padx=(8, 0))
+        ttk.Button(btn_bar, text="Закрыть", command=win.destroy).pack(side="right")
+
+    # === 📸 Snapshot — бэкап getvar + token перед опасной операцией ===
+    def action_snapshot(self):
+        self.run_async(self._do_snapshot)
+
+    def _do_snapshot(self):
+        self.status.set("Делаю snapshot текущего состояния…")
+        self.write("", "")
+        self.write("═══ SNAPSHOT (бэкап перед операцией) ═══", "hdr")
+
+        if not fb_check_usb():
+            self.write("Телефон не найден в Fastboot!", "err")
+            self.write("Snapshot делается в режиме Fastboot. Переведи телефон туда.", "warn")
+            return
+
+        REPORTS.mkdir(parents=True, exist_ok=True)
+        ts = datetime.now().strftime("%Y%m%d-%H%M%S")
+        tmp_dir = REPORTS / f"snapshot_{ts}"
+        tmp_dir.mkdir(exist_ok=True)
+
+        snapshot = {
+            "time": datetime.now().isoformat(),
+            "fastboot_version": None,
+            "getvar_all": {},
+            "oem_commands": {},
+            "dynamic_token": None,
+        }
+
+        # fastboot version
+        rc, out = fb("--version", timeout=3)
+        snapshot["fastboot_version"] = out.splitlines()[0] if out else "?"
+        self.write(f"Fastboot: {snapshot['fastboot_version']}")
+
+        # getvar all
+        self.write("Читаю getvar all…")
+        rc, out = fb("getvar", "all", timeout=30)
+        (tmp_dir / "getvar_all.txt").write_text(out, encoding="utf-8")
+        for line in out.splitlines():
+            m = re.match(r"\(bootloader\)\s*(.+?):\s*(.*)", line)
+            if m:
+                snapshot["getvar_all"][m.group(1).strip()] = m.group(2).strip()
+        self.write(f"✓ Сохранено {len(snapshot['getvar_all'])} переменных", "ok")
+
+        # OEM команды (безопасные)
+        oem_cmds = [
+            ("oem device-info", "device_info"),
+            ("oem fbreason", "boot_reason"),
+            ("oem get-token", "dynamic_token"),
+        ]
+        for cmd, label in oem_cmds:
+            parts = cmd.split()
+            rc, out = fb(*parts, timeout=8)
+            snapshot["oem_commands"][cmd] = {"rc": rc, "out": out}
+            (tmp_dir / f"{label}.txt").write_text(out, encoding="utf-8")
+            if rc == 0:
+                self.write(f"✓ {cmd}", "ok")
+            else:
+                self.write(f"✗ {cmd}: {out[:60]}", "warn")
+
+        # Извлечём dynamic token отдельно
+        token_out = snapshot["oem_commands"].get("oem get-token", {}).get("out", "")
+        for line in token_out.splitlines():
+            m = re.search(r"[A-Za-z0-9+/_-]{32,}=*", line)
+            if m and len(m.group(0)) > 30:
+                snapshot["dynamic_token"] = m.group(0)
+                break
+        if snapshot["dynamic_token"]:
+            self.write(f"✓ Dynamic token извлечён ({len(snapshot['dynamic_token'])} символов)", "ok")
+
+        # JSON
+        (tmp_dir / "snapshot.json").write_text(
+            json.dumps(snapshot, ensure_ascii=False, indent=2), encoding="utf-8"
+        )
+
+        # Упаковываем в zip
+        zip_path = REPORTS / f"snapshot_{ts}.zip"
+        with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zf:
+            for f_ in tmp_dir.iterdir():
+                zf.write(f_, arcname=f_.name)
+
+        # Удаляем временную папку
+        for f_ in tmp_dir.iterdir():
+            f_.unlink()
+        tmp_dir.rmdir()
+
+        self.write("", "")
+        self.write(f"✓ Snapshot сохранён: {zip_path.name}", "ok")
+        self.write(f"  Размер: {zip_path.stat().st_size / 1024:.1f} КБ")
+        self.write("  Храни этот файл перед любой опасной операцией!", "warn")
+        self.status.set(f"Snapshot: {zip_path.name}")
+
+    # === 🏥 Service Report — HTML отчёт для сервисного центра ===
+    def action_service_report(self):
+        self.run_async(self._do_service_report)
+
+    def _do_service_report(self):
+        self.status.set("Генерирую отчёт для сервисного центра…")
+        self.write("", "")
+        self.write("═══ ОТЧЁТ ДЛЯ СЕРВИСА ═══", "hdr")
+
+        # Собираем свежие данные если есть телефон
+        variables = self.device_data.get("variables", {})
+        if not variables and fb_check_usb():
+            self.write("Собираю свежие данные…")
+            rc, out = fb("getvar", "all", timeout=30)
+            for line in out.splitlines():
+                m = re.match(r"\(bootloader\)\s*(.+?):\s*(.*)", line)
+                if m:
+                    variables[m.group(1).strip()] = m.group(2).strip()
+            self.device_data["variables"] = variables
+
+        if not variables:
+            self.write("Нет данных диагностики. Запусти Полную диагностику или подключи телефон.", "warn")
+
+        REPORTS.mkdir(parents=True, exist_ok=True)
+        ts = datetime.now().strftime("%Y%m%d-%H%M%S")
+        html_path = REPORTS / f"service_report_{ts}.html"
+
+        # Собираем все предыдущие отчёты
+        prev_reports = sorted(REPORTS.glob("*-diagnostic.json"))[-5:]
+        prev_summary = []
+        for p in prev_reports:
+            try:
+                d = json.loads(p.read_text(encoding="utf-8"))
+                prev_summary.append({
+                    "file": p.name,
+                    "time": d.get("time", "?"),
+                    "vars_count": len(d.get("variables", {})),
+                })
+            except Exception:
+                pass
+
+        def row(k, v, tag=""):
+            cls = f' class="{tag}"' if tag else ""
+            return f"<tr><td class='k'>{html.escape(k)}</td><td{cls}>{html.escape(str(v))}</td></tr>"
+
+        tried_methods = [
+            ("fastboot getvar / oem device-info", "OK", "Диагностика работает"),
+            ("MiFlash clean_all_and_lock", "FAIL", "Телефон не входит в EDL"),
+            ("EDL кабель (COM port)", "FAIL", "Требует подписанный Firehose loader для SM8850"),
+            ("TWRP boot (fastboot boot)", "FAIL", "Verified Boot блокирует неподписанные образы"),
+            ("GBL exploit (gbl_efi_unlock.efi)", "FAIL", "efisp стёрт + патч закрыл дыру в HyperOS 3.0.304+"),
+            ("UnlockerBL_8EG5_v2 повторно", "FAIL", "Требует разблокированный загрузчик"),
+            ("Публичные Firehose loaders", "FAIL", "Для SM8850 (Snapdragon 8 Elite) не опубликованы"),
+        ]
+
+        services_html = ""
+        for s in SERVICE_CONTACTS:
+            badge = "✓ ПРОВЕРЕН" if s["proven"] else "не проверен"
+            badge_cls = "ok" if s["proven"] else "warn"
+            services_html += f"""
+            <div class="service">
+              <h4>{html.escape(s['name'])} <span class="badge {badge_cls}">{badge}</span></h4>
+              <p><b>Метод:</b> {html.escape(s['method'])}</p>
+              <p><b>Цена:</b> {html.escape(s['price_aznish'])} · <b>Гарантия:</b> {html.escape(s['warranty'])}</p>
+              <p class="notes">{html.escape(s['notes'])}</p>
+            </div>"""
+
+        rows_html = ""
+        key_fields = [
+            "product", "variant", "unlocked", "secure", "current-slot",
+            "slot-unbootable:a", "slot-unbootable:b",
+            "slot-successful:a", "slot-successful:b",
+            "anti", "security-patch-level", "battery-voltage", "cpuid",
+        ]
+        for k in key_fields:
+            v = variables.get(k, "—")
+            tag = ""
+            if k == "unlocked":
+                tag = "err" if v == "no" else "ok"
+            if "unbootable" in k and v == "yes":
+                tag = "err"
+            rows_html += row(k, v, tag)
+
+        tried_html = ""
+        for method, result, reason in tried_methods:
+            cls = "ok" if result == "OK" else "err"
+            tried_html += f"<tr><td>{html.escape(method)}</td><td class='{cls}'>{result}</td><td>{html.escape(reason)}</td></tr>"
+
+        prev_html = ""
+        for p in prev_summary:
+            prev_html += f"<li><code>{html.escape(p['file'])}</code> — {html.escape(p['time'])} ({p['vars_count']} переменных)</li>"
+        if not prev_html:
+            prev_html = "<li><i>Нет предыдущих диагностик</i></li>"
+
+        doc = f"""<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<title>Pandora — Отчёт для сервиса ({ts})</title>
+<style>
+  body {{ font-family: -apple-system, Segoe UI, Roboto, sans-serif; max-width: 900px;
+         margin: 20px auto; padding: 20px; background: #f8fafc; color: #0f172a; }}
+  h1 {{ color: #0f172a; border-bottom: 3px solid #ea580c; padding-bottom: 8px; }}
+  h2 {{ color: #ea580c; margin-top: 32px; }}
+  h3 {{ color: #0f172a; }}
+  table {{ border-collapse: collapse; width: 100%; margin: 12px 0; background: #fff; }}
+  th, td {{ padding: 8px 12px; border: 1px solid #e2e8f0; text-align: left; }}
+  th {{ background: #f1f5f9; }}
+  td.k {{ font-family: Consolas, monospace; font-weight: 600; color: #475569; width: 240px; }}
+  td.ok, span.ok {{ color: #16a34a; font-weight: 600; }}
+  td.err, span.err {{ color: #dc2626; font-weight: 600; }}
+  td.warn, span.warn {{ color: #ca8a04; font-weight: 600; }}
+  .meta {{ background: #fff; padding: 16px; border-radius: 8px; margin-bottom: 20px;
+           box-shadow: 0 1px 3px rgba(0,0,0,0.05); }}
+  .warning {{ background: #fef2f2; border-left: 4px solid #dc2626; padding: 12px 16px; margin: 16px 0; }}
+  .service {{ background: #fff; padding: 12px 16px; margin: 10px 0; border-radius: 8px;
+              border-left: 4px solid #0284c7; }}
+  .badge {{ padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 600; }}
+  .badge.ok {{ background: #dcfce7; color: #166534; }}
+  .badge.warn {{ background: #fef3c7; color: #92400e; }}
+  .notes {{ color: #64748b; font-size: 13px; margin: 4px 0 0; }}
+  code {{ font-family: Consolas, monospace; background: #f1f5f9; padding: 1px 6px; border-radius: 3px; }}
+  footer {{ margin-top: 40px; padding-top: 20px; border-top: 1px solid #e2e8f0;
+            color: #64748b; font-size: 12px; }}
+</style>
+</head>
+<body>
+
+<h1>📱 Отчёт для сервисного центра</h1>
+
+<div class="meta">
+  <h3>Устройство</h3>
+  <table>
+    <tr><td class="k">Модель</td><td>Xiaomi 17 Pro China (25098PN5AC)</td></tr>
+    <tr><td class="k">Кодовое имя</td><td>pandora</td></tr>
+    <tr><td class="k">Процессор</td><td>Snapdragon 8 Elite (SM8850)</td></tr>
+    <tr><td class="k">UFS</td><td>{html.escape(variables.get("variant", "?"))}</td></tr>
+    <tr><td class="k">Серийный</td><td>d5835558</td></tr>
+    <tr><td class="k">Отчёт сгенерирован</td><td>{datetime.now().strftime("%Y-%m-%d %H:%M:%S")}</td></tr>
+  </table>
+</div>
+
+<h2>⚠️ Текущее состояние</h2>
+<table>
+{rows_html}
+</table>
+
+<h2>❌ Что уже пробовали (программно)</h2>
+<table>
+  <tr><th>Метод</th><th>Результат</th><th>Причина</th></tr>
+  {tried_html}
+</table>
+
+<div class="warning">
+  <b>Вывод:</b> для CNXM ROM (Китай) + заблокированного SM8850 + стёртого efisp
+  публичных программных методов восстановления <b>не существует</b>.
+  Нужен либо коммерческий сервис с приватным Firehose loader,
+  либо физический chip-off ремонт NAND/UFS.
+</div>
+
+<h2>📞 Проверенные/известные сервисы</h2>
+{services_html}
+
+<h2>📂 История диагностик</h2>
+<ul>
+{prev_html}
+</ul>
+
+<h2>💡 Что нужно от мастера</h2>
+<ol>
+  <li>Опыт с <b>Snapdragon 8 Elite / SM8850</b> и UFS 4.0 конкретно.</li>
+  <li><b>Инфракрасная паяльная станция</b> (не фен) с трафаретом под UFS этой модели.</li>
+  <li><b>Гарантия на пайку</b> минимум 3 месяца.</li>
+  <li>Готовность <b>заменить UFS/CPU</b> если chip-off не удастся (цена заранее).</li>
+  <li>Если возможно — <b>ISP вместо chip-off</b> (меньше риска, но на новых Xiaomi часто недоступно).</li>
+</ol>
+
+<footer>
+  Сгенерировано Pandora Unified 1.1 ·
+  Полный журнал восстановления:
+  <a href="https://github.com/alizaderamil/xiaomi-pandora-recovery">github.com/alizaderamil/xiaomi-pandora-recovery</a>
+</footer>
+
+</body>
+</html>"""
+
+        html_path.write_text(doc, encoding="utf-8")
+        self.write(f"✓ Отчёт сохранён: {html_path.name}", "ok")
+        self.write(f"  Путь: {html_path}")
+        self.write("  Открываю в браузере…")
+
+        try:
+            webbrowser.open(f"file:///{html_path.as_posix()}")
+        except Exception as e:
+            self.write(f"Не смог открыть в браузере: {e}", "warn")
+
+        self.status.set(f"Отчёт: {html_path.name}")
+
+    # === 📊 UFS Health — benchmark после chip-off ===
+    def action_ufs_health(self):
+        self.run_async(self._do_ufs_health)
+
+    def _do_ufs_health(self):
+        self.status.set("UFS benchmark через ADB…")
+        self.write("", "")
+        self.write("═══ UFS HEALTH BENCHMARK ═══", "hdr")
+
+        if not adb_check():
+            self.write("ADB не видит телефон. Загрузи его в Android и включи USB-отладку.", "err")
+            self.write("Если отладка выключена: Settings → About → MIUI 8 раз →", "warn")
+            self.write("  Settings → Additional → Developer → USB debugging ON", "warn")
+            self.status.set("ADB устройство не найдено")
+            return
+
+        # Получаем модель устройства для надёжности
+        rc, out = adb_cmd("shell", "getprop", "ro.product.model", timeout=5)
+        self.write(f"Устройство: {out.strip()}")
+
+        # Чтение
+        self.write("Тест ЧТЕНИЯ (256 МБ случайный блок UFS)…")
+        rc, out = adb_cmd(
+            "shell",
+            "dd if=/dev/block/bootdevice of=/dev/null bs=1M count=256 iflag=nocache 2>&1",
+            timeout=60,
+        )
+        read_mbs = self._parse_dd_speed(out)
+        if read_mbs:
+            self.write(f"✓ Чтение: {read_mbs:.1f} МБ/с", "ok")
+        else:
+            self.write(f"Не смог распарсить скорость: {out[:200]}", "warn")
+
+        # Запись (в /data/local/tmp — безопасно)
+        self.write("Тест ЗАПИСИ (256 МБ в /data/local/tmp)…")
+        adb_cmd("shell", "rm -f /data/local/tmp/_ufs_test", timeout=5)
+        rc, out = adb_cmd(
+            "shell",
+            "dd if=/dev/zero of=/data/local/tmp/_ufs_test bs=1M count=256 oflag=sync 2>&1",
+            timeout=60,
+        )
+        write_mbs = self._parse_dd_speed(out)
+        if write_mbs:
+            self.write(f"✓ Запись: {write_mbs:.1f} МБ/с", "ok")
+        else:
+            self.write(f"Не смог распарсить скорость: {out[:200]}", "warn")
+        adb_cmd("shell", "rm -f /data/local/tmp/_ufs_test", timeout=5)
+
+        # Сохраняем результат
+        REPORTS.mkdir(parents=True, exist_ok=True)
+        now = datetime.now().isoformat()
+        measurement = {
+            "time": now,
+            "read_mbs": read_mbs,
+            "write_mbs": write_mbs,
+        }
+
+        # Baseline
+        if not UFS_BASELINE.exists():
+            UFS_BASELINE.write_text(json.dumps(measurement, indent=2), encoding="utf-8")
+            self.write("", "")
+            self.write("📌 BASELINE сохранён (первый замер).", "hdr")
+            self.write("   Запусти этот тест через месяц, затем через 6/12 месяцев.")
+            self.write("   Если скорость упадёт >20% — пайка начинает деградировать.", "warn")
+        else:
+            baseline = json.loads(UFS_BASELINE.read_text(encoding="utf-8"))
+            self.write("", "")
+            self.write(f"📊 Сравнение с baseline ({baseline['time']}):", "hdr")
+
+            def pct(curr, base):
+                if not curr or not base:
+                    return None
+                return (curr - base) / base * 100
+
+            br = pct(read_mbs, baseline.get("read_mbs"))
+            bw = pct(write_mbs, baseline.get("write_mbs"))
+
+            if br is not None:
+                tag = "ok" if br > -10 else ("warn" if br > -20 else "err")
+                self.write(f"  Чтение: {read_mbs:.1f} vs {baseline['read_mbs']:.1f} МБ/с ({br:+.1f}%)", tag)
+            if bw is not None:
+                tag = "ok" if bw > -10 else ("warn" if bw > -20 else "err")
+                self.write(f"  Запись: {write_mbs:.1f} vs {baseline['write_mbs']:.1f} МБ/с ({bw:+.1f}%)", tag)
+
+            if (br is not None and br < -20) or (bw is not None and bw < -20):
+                self.write("", "")
+                self.write("⚠️  ВНИМАНИЕ: падение скорости >20%!", "err")
+                self.write("   Возможные причины:", "err")
+                self.write("     • Пайка после chip-off начинает деградировать", "err")
+                self.write("     • Ячейки NAND износились", "err")
+                self.write("   Рекомендую: ещё раз замерить через неделю,", "warn")
+                self.write("   если тренд подтвердится — обратись в сервис по гарантии.", "warn")
+
+        # История
+        history_path = REPORTS / "ufs_history.jsonl"
+        with open(history_path, "a", encoding="utf-8") as f:
+            f.write(json.dumps(measurement, ensure_ascii=False) + "\n")
+        self.write("", "")
+        self.write(f"✓ История: {history_path.name}", "ok")
+        self.status.set(f"UFS: R={read_mbs:.0f} W={write_mbs:.0f} МБ/с")
+
+    def _parse_dd_speed(self, output):
+        """Парсит скорость из вывода dd (МБ/с)."""
+        for line in output.splitlines():
+            # dd: "256+0 records in, ..., 268435456 bytes (256 MB) copied, X s, Y MB/s"
+            m = re.search(r"([\d.]+)\s*(MB|GB|KB)/s", line)
+            if m:
+                v = float(m.group(1))
+                unit = m.group(2)
+                if unit == "GB":
+                    return v * 1024
+                if unit == "MB":
+                    return v
+                if unit == "KB":
+                    return v / 1024
+            # Альтернативный формат: "copied, 2.5 s, 102 MB/s"
+            m = re.search(r"copied,.*?([\d.]+)\s*(MB|GB|KB)/s", line)
+            if m:
+                v = float(m.group(1))
+                unit = m.group(2)
+                if unit == "GB":
+                    return v * 1024
+                if unit == "MB":
+                    return v
+                if unit == "KB":
+                    return v / 1024
+        return None
 
     def _save_report(self, name, data):
         REPORTS.mkdir(parents=True, exist_ok=True)
