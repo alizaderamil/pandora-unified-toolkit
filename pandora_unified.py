@@ -127,6 +127,72 @@ def service_i18n(service, field):
     return service.get(lang_key) or service.get(f"{field}_en") or service.get(field, "")
 
 
+class DeviceMonitor:
+    """
+    Фоновый поллинг fastboot + adb. Вызывает callback(state) когда состояние
+    меняется. state = {"mode": "fastboot"|"adb"|"none", "info": {...}}
+    """
+
+    def __init__(self, callback, interval=2.5):
+        self.callback = callback
+        self.interval = interval
+        self.running = False
+        self.thread = None
+        self.last_state = None
+
+    def start(self):
+        if self.running:
+            return
+        self.running = True
+        self.thread = threading.Thread(target=self._loop, daemon=True)
+        self.thread.start()
+
+    def stop(self):
+        self.running = False
+
+    def _loop(self):
+        while self.running:
+            try:
+                state = self._check()
+                # Сообщаем только при изменении, чтобы не долбить callback
+                if state != self.last_state:
+                    self.last_state = state
+                    try:
+                        self.callback(state)
+                    except Exception as e:
+                        print(f"[DeviceMonitor] callback error: {e}", file=sys.stderr)
+            except Exception as e:
+                print(f"[DeviceMonitor] poll error: {e}", file=sys.stderr)
+            time.sleep(self.interval)
+
+    def _check(self):
+        # Fastboot первым — он быстрее отвечает когда телефон там
+        rc, out = fb("devices", timeout=2)
+        if "fastboot" in out.lower():
+            info = {}
+            for var in ("product", "unlocked", "current-slot", "secure"):
+                rc, o = fb("getvar", var, timeout=2)
+                m = re.search(r"\(bootloader\)\s*" + re.escape(var) + r":\s*(.*)", o)
+                if m:
+                    info[var] = m.group(1).strip()
+            return {"mode": "fastboot", "info": info}
+
+        rc, out = adb_cmd("devices", timeout=2)
+        for line in out.splitlines():
+            if "\tdevice" in line:
+                info = {}
+                for prop, key in (
+                    ("ro.product.name", "product"),
+                    ("ro.product.model", "model"),
+                    ("ro.boot.flash.locked", "locked"),
+                    ("ro.boot.verifiedbootstate", "verified"),
+                ):
+                    rc, o = adb_cmd("shell", "getprop", prop, timeout=2)
+                    info[key] = o.strip()
+                return {"mode": "adb", "info": info}
+        return {"mode": "none", "info": {}}
+
+
 PROFILES_DIR = Path(__file__).resolve().parent / "profiles"
 TRANSLATIONS_DIR = Path(__file__).resolve().parent / "translations"
 SETTINGS_FILE = Path(__file__).resolve().parent / ".pandora_settings.json"
@@ -251,9 +317,21 @@ class App:
         self.device_data = {}
         self.device_profile = None  # DEVICE_PROFILES[...] либо None
         self.manual_device_override = False  # True если пользователь выбрал вручную
+        self.current_device_state = {"mode": "none", "info": {}}
+        self.device_monitor = None  # запустим после _build_ui
 
         self._setup_styles()
         self._build_ui()
+
+        # Запускаем мониторинг устройства после построения UI
+        self.device_monitor = DeviceMonitor(self._on_device_state_change)
+        self.device_monitor.start()
+        root.protocol("WM_DELETE_WINDOW", self._on_close)
+
+    def _on_close(self):
+        if self.device_monitor:
+            self.device_monitor.stop()
+        self.root.destroy()
 
     def _setup_styles(self):
         style = ttk.Style(self.root)
@@ -270,6 +348,109 @@ class App:
                         foreground="#e2e8f0", rowheight=24, font=("Segoe UI", 9))
         style.configure("Treeview.Heading", font=("Segoe UI", 10, "bold"))
 
+    def _build_device_bar(self, parent):
+        """Live device status bar — mode, device info, reboot buttons, progress bar."""
+        bar = tk.Frame(parent, bg="#1a2235", padx=14, pady=10)
+        bar.pack(fill="x", pady=(0, 10))
+
+        # Левая часть — иконка состояния + текст
+        left = tk.Frame(bar, bg="#1a2235")
+        left.pack(side="left", fill="x", expand=True)
+
+        self.devbar_icon = tk.Label(
+            left, text="⚫", font=("Segoe UI", 16),
+            bg="#1a2235", fg="#64748b",
+        )
+        self.devbar_icon.pack(side="left", padx=(0, 10))
+
+        self.devbar_text = tk.StringVar(value="Checking for devices…")
+        tk.Label(
+            left, textvariable=self.devbar_text,
+            font=("Segoe UI", 10), bg="#1a2235", fg="#e2e8f0",
+            anchor="w", justify="left",
+        ).pack(side="left", fill="x", expand=True)
+
+        # Правая часть — reboot кнопки + progress
+        right = tk.Frame(bar, bg="#1a2235")
+        right.pack(side="right")
+
+        self.progress_bar = ttk.Progressbar(
+            right, mode="indeterminate", length=120,
+        )
+        # Пока скрыта — покажем во время async операций
+
+        self.reboot_btn = ttk.Button(
+            right, text="— ", command=self._on_reboot_click, state="disabled",
+        )
+        self.reboot_btn.pack(side="right")
+
+        # Текущая роль кнопки: None | "to_fastboot" | "to_android"
+        self.reboot_mode = None
+        # Последнее известное состояние (для действий)
+        self.current_device_state = {"mode": "none", "info": {}}
+
+    def _update_device_bar(self, state):
+        """Обновить status bar по новому состоянию (главный поток)."""
+        self.current_device_state = state
+        mode = state["mode"]
+        info = state["info"]
+
+        if mode == "fastboot":
+            product = info.get("product", "?")
+            unlocked = info.get("unlocked", "?")
+            slot = info.get("current-slot", "?")
+            lock_badge = "🔓 unlocked" if unlocked == "yes" else "🔒 locked"
+            self.devbar_icon.configure(text="🔌", fg="#60a5fa")
+            self.devbar_text.set(
+                f"Fastboot · {product} · {lock_badge} · slot {slot}"
+            )
+            self.reboot_btn.configure(
+                text="↻ Reboot to Android",
+                state="normal",
+            )
+            self.reboot_mode = "to_android"
+        elif mode == "adb":
+            product = info.get("product", "?")
+            model = info.get("model", "")
+            locked = info.get("locked", "")
+            lock_badge = "🔒 locked" if locked == "1" else "🔓 unlocked"
+            label = f"{product}" + (f" ({model})" if model and model != product else "")
+            self.devbar_icon.configure(text="📱", fg="#4ade80")
+            self.devbar_text.set(
+                f"Android (ADB) · {label} · {lock_badge}"
+            )
+            self.reboot_btn.configure(
+                text="↻ Reboot to Fastboot",
+                state="normal",
+            )
+            self.reboot_mode = "to_fastboot"
+        else:
+            self.devbar_icon.configure(text="⚫", fg="#64748b")
+            self.devbar_text.set(
+                "No device detected · Connect phone via USB (Fastboot or Android with USB debugging)"
+            )
+            self.reboot_btn.configure(text="— ", state="disabled")
+            self.reboot_mode = None
+
+    def _on_reboot_click(self):
+        """One-click reboot между fastboot и android."""
+        if self.reboot_mode == "to_android":
+            self.write("↻ Rebooting to Android…")
+            threading.Thread(
+                target=lambda: fb("reboot", timeout=5),
+                daemon=True,
+            ).start()
+        elif self.reboot_mode == "to_fastboot":
+            self.write("↻ Rebooting to Fastboot (bootloader)…")
+            threading.Thread(
+                target=lambda: adb_cmd("reboot", "bootloader", timeout=5),
+                daemon=True,
+            ).start()
+
+    def _on_device_state_change(self, state):
+        """Thread-safe callback from DeviceMonitor."""
+        self.root.after(0, lambda: self._update_device_bar(state))
+
     def _build_ui(self):
         main = ttk.Frame(self.root, padding=18)
         main.pack(fill="both", expand=True)
@@ -284,6 +465,9 @@ class App:
         )
         ttk.Label(header, textvariable=self.subtitle_var,
                   style="Sub.TLabel").pack(side="left", padx=(14, 0), pady=(10, 0))
+
+        # Live device status bar — всегда показывает текущее состояние телефона
+        self._build_device_bar(main)
 
         # Селекторы — язык + устройство
         selector_frame = ttk.Frame(main)
@@ -323,37 +507,40 @@ class App:
         btn_frame1 = ttk.Frame(main)
         btn_frame1.pack(fill="x", pady=(0, 6))
 
+        # Mode requirements: "fastboot", "adb", or None (works anywhere)
         self.buttons = []
-        self.button_keys = []  # (button, translation_key) для обновления при смене языка
+        self.button_keys = []  # (button, translation_key, mode) для обновления при смене языка
         row1_actions = [
-            ("btn.diagnostic", self.action_diagnostic),
-            ("btn.ufs_check", self.action_ufs_check),
-            ("btn.bootfail", self.action_bootfail),
-            ("btn.compare", self.action_compare_firmware),
-            ("btn.reports", self.action_open_reports),
+            ("btn.diagnostic", self.action_diagnostic, "fastboot"),
+            ("btn.ufs_check", self.action_ufs_check, "fastboot"),
+            ("btn.bootfail", self.action_bootfail, None),
+            ("btn.compare", self.action_compare_firmware, "fastboot"),
+            ("btn.reports", self.action_open_reports, None),
         ]
-        for key, cmd in row1_actions:
-            b = ttk.Button(btn_frame1, text=tr(key), command=cmd, style="Big.TButton")
+        for key, cmd, mode in row1_actions:
+            b = ttk.Button(btn_frame1, text=self._btn_text(key, mode),
+                           command=cmd, style="Big.TButton")
             b.pack(side="left", padx=(0, 6))
             self.buttons.append(b)
-            self.button_keys.append((b, key))
+            self.button_keys.append((b, key, mode))
 
         # Кнопки — ряд 2 (защита + сервис + здоровье)
         btn_frame2 = ttk.Frame(main)
         btn_frame2.pack(fill="x", pady=(0, 12))
 
         row2_actions = [
-            ("btn.lock_wizard", self.action_lock_wizard),
-            ("btn.snapshot", self.action_snapshot),
-            ("btn.service_report", self.action_service_report),
-            ("btn.ufs_health", self.action_ufs_health),
-            ("btn.lessons", self.action_open_lessons),
+            ("btn.lock_wizard", self.action_lock_wizard, None),
+            ("btn.snapshot", self.action_snapshot, "fastboot"),
+            ("btn.service_report", self.action_service_report, None),
+            ("btn.ufs_health", self.action_ufs_health, "adb"),
+            ("btn.lessons", self.action_open_lessons, None),
         ]
-        for key, cmd in row2_actions:
-            b = ttk.Button(btn_frame2, text=tr(key), command=cmd, style="Big.TButton")
+        for key, cmd, mode in row2_actions:
+            b = ttk.Button(btn_frame2, text=self._btn_text(key, mode),
+                           command=cmd, style="Big.TButton")
             b.pack(side="left", padx=(0, 6))
             self.buttons.append(b)
-            self.button_keys.append((b, key))
+            self.button_keys.append((b, key, mode))
 
         # Статус-бар
         self.status = tk.StringVar(value=tr("status.ready"))
@@ -415,10 +602,74 @@ class App:
                 _save_settings(settings)
                 self._refresh_ui_language()
 
+    def _btn_text(self, key, mode):
+        """Button text with mode suffix (FB / ADB)."""
+        base = tr(key)
+        if mode == "fastboot":
+            return f"{base}  · FB"
+        elif mode == "adb":
+            return f"{base}  · ADB"
+        return base
+
+    def _check_mode_or_prompt(self, needed_mode):
+        """
+        Проверка что телефон в нужном режиме. Если нет — предлагаем ребутнуть.
+        Returns True если можно продолжать, False если юзер отменил или
+        операция ребута запущена (должна быть повторена пользователем).
+        """
+        if needed_mode is None:
+            return True
+        current = self.current_device_state.get("mode", "none")
+        if current == needed_mode:
+            return True
+
+        # Нужен другой режим
+        if needed_mode == "fastboot":
+            if current == "adb":
+                ok = messagebox.askyesno(
+                    "Reboot required",
+                    "This action requires Fastboot mode, but the phone is in Android (ADB).\n\n"
+                    "Reboot to Fastboot now? (Click the action button again after reboot completes.)",
+                )
+                if ok:
+                    threading.Thread(
+                        target=lambda: adb_cmd("reboot", "bootloader", timeout=5),
+                        daemon=True,
+                    ).start()
+                    self.write("↻ Rebooting to Fastboot… wait ~10 sec, then click again.", "warn")
+                return False
+            else:
+                messagebox.showwarning(
+                    "No device",
+                    "No phone detected. Connect via USB in Fastboot mode and try again.",
+                )
+                return False
+        elif needed_mode == "adb":
+            if current == "fastboot":
+                ok = messagebox.askyesno(
+                    "Reboot required",
+                    "This action requires Android mode (ADB), but the phone is in Fastboot.\n\n"
+                    "Reboot to Android now? (Click the action button again after reboot + USB debugging prompt.)",
+                )
+                if ok:
+                    threading.Thread(
+                        target=lambda: fb("reboot", timeout=5),
+                        daemon=True,
+                    ).start()
+                    self.write("↻ Rebooting to Android… wait ~20 sec + accept USB debug prompt.", "warn")
+                return False
+            else:
+                messagebox.showwarning(
+                    "No device",
+                    "No phone detected. Connect via USB (Android with USB debugging enabled) and try again.",
+                )
+                return False
+        return True
+
     def _refresh_ui_language(self):
         """Обновить тексты кнопок, статуса, вкладок после смены языка."""
-        for btn, key in self.button_keys:
-            btn.configure(text=tr(key))
+        for btn, key, mode in self.button_keys:
+            btn.configure(text=self._btn_text(key, mode))
         self.status.set(tr("status.ready"))
         devices_list = ", ".join(f"{p['codename']}" for p in DEVICE_PROFILES.values())
         self.subtitle_var.set(tr("app.subtitle", devices=devices_list) + "  ·  v1.2")
@@ -516,16 +767,36 @@ class App:
         self.busy = True
         for b in self.buttons:
             b.configure(state="disabled")
+        # Показываем progress bar
+        try:
+            self.progress_bar.pack(side="right", padx=(0, 10))
+            self.progress_bar.start(interval=50)
+        except Exception:
+            pass
+
         def wrapper():
             try:
                 func()
             finally:
                 self.busy = False
-                self.root.after(0, lambda: [b.configure(state="normal") for b in self.buttons])
+
+                def finish():
+                    for b in self.buttons:
+                        b.configure(state="normal")
+                    try:
+                        self.progress_bar.stop()
+                        self.progress_bar.pack_forget()
+                    except Exception:
+                        pass
+
+                self.root.after(0, finish)
+
         threading.Thread(target=wrapper, daemon=True).start()
 
     # === 1. Диагностика ===
     def action_diagnostic(self):
+        if not self._check_mode_or_prompt("fastboot"):
+            return
         self.run_async(self._do_diagnostic)
 
     def _do_diagnostic(self):
@@ -603,6 +874,8 @@ class App:
 
     # === 2. UFS проверка (критична для auth-free firehose) ===
     def action_ufs_check(self):
+        if not self._check_mode_or_prompt("fastboot"):
+            return
         self.run_async(self._do_ufs_check)
 
     def _do_ufs_check(self):
@@ -749,6 +1022,8 @@ class App:
 
     # === 4. Сравнение с OS4 OTA ===
     def action_compare_firmware(self):
+        if not self._check_mode_or_prompt("fastboot"):
+            return
         self.run_async(self._do_compare)
 
     def _do_compare(self):
@@ -1264,6 +1539,8 @@ STEP 3. Boot and verify
 
     # === 📸 Snapshot — бэкап getvar + token перед опасной операцией ===
     def action_snapshot(self):
+        if not self._check_mode_or_prompt("fastboot"):
+            return
         self.run_async(self._do_snapshot)
 
     def _do_snapshot(self):
@@ -1621,6 +1898,8 @@ STEP 3. Boot and verify
 
     # === 📊 UFS Health — benchmark после chip-off ===
     def action_ufs_health(self):
+        if not self._check_mode_or_prompt("adb"):
+            return
         self.run_async(self._do_ufs_health)
 
     def _do_ufs_health(self):

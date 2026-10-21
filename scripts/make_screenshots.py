@@ -58,7 +58,16 @@ def main():
     app = pu.App(root)
     root.geometry("1200x860+40+40")
     root.update()
-    time.sleep(0.5)
+    # Останавливаем фоновый DeviceMonitor (конфликтует со script-режимом без mainloop)
+    # и делаем один прямой опрос в main thread
+    if app.device_monitor:
+        app.device_monitor.stop()
+    print("  Doing a direct device check…")
+    state = app.device_monitor._check() if app.device_monitor else {"mode": "none", "info": {}}
+    print(f"  Detected: {state['mode']}")
+    app._update_device_bar(state)
+    root.update()
+    time.sleep(0.3)
 
     # --- 1. MAIN WINDOW with diagnostic output ---
     print("1/4: main.png")
