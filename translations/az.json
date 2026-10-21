@@ -36,5 +36,30 @@
   "msg.limited_features": "   Profilə bağlı funksiyalar (Compare, Lock Wizard) məhdud olacaq.",
 
   "lock.title.exploit": "✅ DÜZGÜN ARDICILLIQ (exploit açılış, 3 addım):",
-  "lock.title.mi_unlock": "✅ STANDART KİLİD (Mi Unlock ilə açılmış):"
+  "lock.title.mi_unlock": "✅ STANDART KİLİD (Mi Unlock ilə açılmış):",
+
+  "report.title": "Servis mərkəzi üçün hesabat",
+  "report.h1": "📱 Servis mərkəzi üçün hesabat",
+  "report.device": "Cihaz",
+  "report.model": "Model",
+  "report.codename": "Kod adı",
+  "report.processor": "Prosessor",
+  "report.storage": "Yaddaş",
+  "report.serial": "Seriya nömrəsi",
+  "report.generated": "Hesabat yaradıldı",
+  "report.state": "⚠️ Cari vəziyyət",
+  "report.tried": "❌ Nə artıq cəhd edilib (proqramla)",
+  "report.col.method": "Metod",
+  "report.col.result": "Nəticə",
+  "report.col.reason": "Səbəb",
+  "report.services": "📞 Doğrulanmış/məlum servislər",
+  "report.history": "📂 Diaqnostika tarixçəsi",
+  "report.ask_master": "💡 Ustadan nə soruşmalı",
+  "report.ask.1": "Bu konkret çip və yaddaş sinfi ilə təcrübə.",
+  "report.ask.2": "<b>İnfraqırmızı lehimləmə stansiyası</b> (fen yox) bu UFS/eMMC üçün uyğun şablonla.",
+  "report.ask.3": "<b>Lehim zəmanəti</b> ən azı 3 ay.",
+  "report.ask.4": "<b>UFS/CPU dəyişməyə</b> hazırlıq əgər chip-off alınmasa (qiymət əvvəldən).",
+  "report.ask.5": "Mümkünsə — <b>chip-off yerinə ISP</b> (daha az risk, lakin yeni Xiaomi-lərdə tez-tez əlçatmaz).",
+  "report.footer": "Pandora Unified tərəfindən yaradıldı · Tam bərpa jurnalı:",
+  "report.no_history": "Əvvəlki diaqnostika yoxdur"
 }

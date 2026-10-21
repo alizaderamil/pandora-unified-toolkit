@@ -7,6 +7,26 @@
 **🔧 Platform:** Windows (uses Xiaomi's fastboot/adb binaries bundled in `adb/`)
 **📝 License:** MIT — see [LICENSE](LICENSE)
 
+## Screenshots
+
+![Main window — Full diagnostic](docs/images/main.png)
+
+The main window with a Redmi Note 11 auto-detected via `fastboot getvar product`.
+
+![Lock Wizard — exploit mode](docs/images/lock-wizard.png)
+
+The Lock Wizard in exploit mode explains the **correct** 3-step sequence to re-lock a bootloader that was unlocked via exploit. The red block documents the mistake that bricked the original pandora.
+
+![UFS Health benchmark](docs/images/ufs-health.png)
+
+UFS Health runs an `adb shell dd` benchmark, saves a per-device baseline on first run, and warns if speed drops >20% on later runs — useful for tracking pairing deterioration after chip-off repair.
+
+![Service Center Report](docs/images/service-report.png)
+
+The service report generates a self-contained HTML with device state, methods already tried, known services, and a verdict block that adapts to the device profile.
+
+---
+
 ---
 
 ## Why this exists

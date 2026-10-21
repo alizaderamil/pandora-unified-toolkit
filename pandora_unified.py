@@ -91,26 +91,40 @@ def adb_check():
     return False
 
 
-# Авторизованные/проверенные сервисы (общие для всех устройств)
+# Авторизованные/проверенные сервисы (общие для всех устройств).
+# Поля _ru/_en позволяют i18n без копирования всей структуры.
 SERVICE_CONTACTS = [
     {
         "name": "Mobil Hafiz telefon servisi",
         "method": "Chip-off NAND/UFS/eMMC",
-        "price_aznish": "250-400 AZN (зависит от модели)",
-        "warranty": "6 месяцев",
+        "price_aznish_en": "250-400 AZN (depends on model)",
+        "price_aznish_ru": "250-400 AZN (зависит от модели)",
+        "warranty_en": "6 months",
+        "warranty_ru": "6 месяцев",
         "proven": True,
-        "notes": "Успешно восстановил pandora 2026-10-21. Инфракрасная станция.",
+        "notes_en": "Successfully recovered pandora on 2026-10-21. Infrared station.",
+        "notes_ru": "Успешно восстановил pandora 2026-10-21. Инфракрасная станция.",
     },
     {
         "name": "UMcrew / @three_tools_gsm",
-        "method": "Firehose loader (приватный)",
-        "price_aznish": "~$30-150",
-        "warranty": "Нет",
+        "method": "Firehose loader (private)",
+        "price_aznish_en": "~$30-150",
+        "price_aznish_ru": "~$30-150",
+        "warranty_en": "None",
+        "warranty_ru": "Нет",
         "proven": False,
-        "notes": "Коммерческий Telegram-сервис, работает удалённо. "
-                 "Для старых моделей (Redmi/Poco) дешевле чем для флагманов.",
+        "notes_en": "Commercial Telegram service, works remotely. "
+                    "For older models (Redmi/Poco) cheaper than for flagships.",
+        "notes_ru": "Коммерческий Telegram-сервис, работает удалённо. "
+                    "Для старых моделей (Redmi/Poco) дешевле чем для флагманов.",
     },
 ]
+
+
+def service_i18n(service, field):
+    """Pick language-aware service field with fallback."""
+    lang_key = f"{field}_{_CURRENT_LANG}"
+    return service.get(lang_key) or service.get(f"{field}_en") or service.get(field, "")
 
 
 PROFILES_DIR = Path(__file__).resolve().parent / "profiles"
@@ -885,26 +899,35 @@ class App:
         frame = ttk.Frame(win, padding=18)
         frame.pack(fill="both", expand=True)
 
-        ttk.Label(frame, text="Правильная блокировка bootloader", style="H.TLabel").pack(anchor="w")
-        subtitle = (
-            f"Устройство: {device_name} · метод: "
-            + ("ЭКСПЛОЙТ (3 шага)" if method == "exploit" else "Mi Unlock (штатный)")
-        )
+        is_en = _CURRENT_LANG == "en"
+        title_t = "Correct bootloader lock" if is_en else "Правильная блокировка bootloader"
+        if is_en:
+            subtitle_tail = "EXPLOIT (3 steps)" if method == "exploit" else "Mi Unlock (standard)"
+            subtitle = f"Device: {device_name} · method: {subtitle_tail}"
+            method_label = "Unlock method:"
+            radios = [("exploit", "Exploit (pandora and similar)"),
+                      ("mi_unlock", "Mi Unlock (Redmi/Poco and standard Xiaomi)")]
+        else:
+            subtitle_tail = "ЭКСПЛОЙТ (3 шага)" if method == "exploit" else "Mi Unlock (штатный)"
+            subtitle = f"Устройство: {device_name} · метод: {subtitle_tail}"
+            method_label = "Метод разлочки:"
+            radios = [("exploit", "Эксплойт (pandora и подобные)"),
+                      ("mi_unlock", "Mi Unlock (Redmi/Poco и штатные Xiaomi)")]
+
+        ttk.Label(frame, text=title_t, style="H.TLabel").pack(anchor="w")
         ttk.Label(frame, text=subtitle, style="Sub.TLabel").pack(anchor="w", pady=(2, 12))
 
         # Переключатель метода (на случай если автоопределение неверное)
         method_frame = ttk.Frame(frame)
         method_frame.pack(fill="x", pady=(0, 10))
-        ttk.Label(method_frame, text="Метод разлочки:").pack(side="left")
+        ttk.Label(method_frame, text=method_label).pack(side="left")
         method_var = tk.StringVar(value=method)
 
         def rebuild():
             win.destroy()
-            # Переоткрываем окно с новым методом
             self._show_lock_wizard_with(method_var.get(), device_name)
 
-        for val, label in [("exploit", "Эксплойт (pandora и подобные)"),
-                           ("mi_unlock", "Mi Unlock (Redmi/Poco и штатные Xiaomi)")]:
+        for val, label in radios:
             ttk.Radiobutton(method_frame, text=label, variable=method_var,
                             value=val, command=rebuild).pack(side="left", padx=(10, 0))
 
@@ -919,35 +942,92 @@ class App:
         win.transient(self.root)
         frame = ttk.Frame(win, padding=18)
         frame.pack(fill="both", expand=True)
-        ttk.Label(frame, text="Правильная блокировка bootloader", style="H.TLabel").pack(anchor="w")
-        subtitle = (
-            f"Устройство: {device_name} · метод: "
-            + ("ЭКСПЛОЙТ (3 шага)" if method == "exploit" else "Mi Unlock (штатный)")
-        )
+        is_en = _CURRENT_LANG == "en"
+        title_t = "Correct bootloader lock" if is_en else "Правильная блокировка bootloader"
+        if is_en:
+            subtitle_tail = "EXPLOIT (3 steps)" if method == "exploit" else "Mi Unlock (standard)"
+            subtitle = f"Device: {device_name} · method: {subtitle_tail}"
+        else:
+            subtitle_tail = "ЭКСПЛОЙТ (3 шага)" if method == "exploit" else "Mi Unlock (штатный)"
+            subtitle = f"Устройство: {device_name} · метод: {subtitle_tail}"
+        ttk.Label(frame, text=title_t, style="H.TLabel").pack(anchor="w")
         ttk.Label(frame, text=subtitle, style="Sub.TLabel").pack(anchor="w", pady=(2, 12))
         self._fill_lock_wizard_content(frame, method, win)
 
     def _fill_lock_wizard_content(self, frame, method, win):
         """Содержимое Lock Wizard в зависимости от метода разлочки."""
+        is_en = _CURRENT_LANG == "en"
         if method == "exploit":
             # Предупреждение про нашу ошибку
             warning_frame = tk.Frame(frame, bg="#7f1d1d", padx=12, pady=10)
             warning_frame.pack(fill="x", pady=(0, 12))
-            tk.Label(
-                warning_frame, text="❌ НАША ОШИБКА 2026-10-15 (pandora):",
-                bg="#7f1d1d", fg="#fecaca", font=("Segoe UI", 11, "bold"),
-            ).pack(anchor="w")
-            tk.Label(
-                warning_frame,
-                text=(
+            if is_en:
+                title_t = "❌ OUR MISTAKE 2026-10-15 (pandora):"
+                body_t = (
+                    "We ran:   fastboot erase efisp  →  fastboot oem lock\n"
+                    "Result:   Device unlocked:false, but Play Protect still refused,\n"
+                    "          then the phone stuck in Fastboot and went to chip-off repair."
+                )
+            else:
+                title_t = "❌ НАША ОШИБКА 2026-10-15 (pandora):"
+                body_t = (
                     "Выполнили:  fastboot erase efisp  →  fastboot oem lock\n"
                     "Результат:  Device unlocked:false, но Play Protect всё равно отказал,\n"
                     "            а потом телефон стуck в Fastboot и пришёл chip-off ремонт."
-                ),
-                bg="#7f1d1d", fg="#fecaca", font=("Consolas", 9), justify="left",
-            ).pack(anchor="w", pady=(4, 0))
+                )
+            tk.Label(warning_frame, text=title_t, bg="#7f1d1d", fg="#fecaca",
+                     font=("Segoe UI", 11, "bold")).pack(anchor="w")
+            tk.Label(warning_frame, text=body_t, bg="#7f1d1d", fg="#fecaca",
+                     font=("Consolas", 9), justify="left").pack(anchor="w", pady=(4, 0))
 
-            steps = """
+            if is_en:
+                steps = """
+✅ CORRECT SEQUENCE (exploit unlock, 3 steps):
+
+══════════════════════════════════════════════════════════════
+STEP 1. Flash STOCK OFFICIAL firmware
+──────────────────────────────────────────────────────────────
+   • No Magisk, TWRP, custom ROMs, LSPosed.
+   • Use MiFlash (WITHOUT clean_all_and_lock, plain flash_all).
+   • Verify Android boots normally.
+
+══════════════════════════════════════════════════════════════
+STEP 2. Erase the exploit marker from efisp
+──────────────────────────────────────────────────────────────
+   Reboot to fastboot and run ONLY this:
+
+       fastboot erase efisp
+
+   ⚠️  Do NOT run fastboot oem lock now!
+   ⚠️  Do NOT boot into system between steps 2 and 3!
+
+══════════════════════════════════════════════════════════════
+STEP 3. Re-flash with clean_all_and_lock flag
+──────────────────────────────────────────────────────────────
+   From fastboot (did not boot into system) run MiFlash again:
+
+       miflash_pro.exe → select same firmware →
+       → option "clean_all_and_lock" (clear_all_lock) → Flash
+
+   After this the phone:
+       • reboots into stock Android
+       • bootloader will be LOCKED
+       • Verified Boot green, Play Protect passes
+
+══════════════════════════════════════════════════════════════
+
+💡 Why  fastboot oem lock  alone does NOT work:
+   Exploit unlock leaves traces in system partitions, not only
+   in efisp/RPMB. "oem lock" flips the lock state but does not
+   clean those traces. Verified Boot sees the leftovers on boot
+   and refuses.
+   Only  clean_all_and_lock  rewrites all partitions atomically
+   under Verified Boot.
+
+══════════════════════════════════════════════════════════════
+"""
+            else:
+                steps = """
 ✅ ПРАВИЛЬНАЯ ПОСЛЕДОВАТЕЛЬНОСТЬ (эксплойт-разлочка, 3 шага):
 
 ══════════════════════════════════════════════════════════════
@@ -997,20 +1077,67 @@ class App:
             # Mi Unlock сценарий (Redmi Note 11 и штатная Xiaomi разлочка)
             info_frame = tk.Frame(frame, bg="#1e3a8a", padx=12, pady=10)
             info_frame.pack(fill="x", pady=(0, 12))
-            tk.Label(
-                info_frame, text="ℹ️ Mi Unlock разлочка — штатная блокировка проста",
-                bg="#1e3a8a", fg="#dbeafe", font=("Segoe UI", 11, "bold"),
-            ).pack(anchor="w")
-            tk.Label(
-                info_frame,
-                text=(
+            if is_en:
+                info_title = "ℹ️ Mi Unlock unlock — standard lock is simple"
+                info_body = (
+                    "If you unlocked via the official Mi Unlock Tool (xiaomi.com),\n"
+                    "there are no exploit traces in efisp — regular flash + lock is enough."
+                )
+            else:
+                info_title = "ℹ️ Mi Unlock разлочка — штатная блокировка проста"
+                info_body = (
                     "Если ты разлочивал через официальный Mi Unlock Tool (xiaomi.com),\n"
                     "то нет следов эксплойта в efisp — достаточно обычной прошивки и lock."
-                ),
-                bg="#1e3a8a", fg="#dbeafe", font=("Consolas", 9), justify="left",
-            ).pack(anchor="w", pady=(4, 0))
+                )
+            tk.Label(info_frame, text=info_title, bg="#1e3a8a", fg="#dbeafe",
+                     font=("Segoe UI", 11, "bold")).pack(anchor="w")
+            tk.Label(info_frame, text=info_body, bg="#1e3a8a", fg="#dbeafe",
+                     font=("Consolas", 9), justify="left").pack(anchor="w", pady=(4, 0))
 
-            steps = """
+            if is_en:
+                steps = """
+✅ STANDARD LOCK (Mi Unlock unlock):
+
+══════════════════════════════════════════════════════════════
+STEP 1. Flash STOCK OFFICIAL firmware (fastboot ROM)
+──────────────────────────────────────────────────────────────
+   • Download fastboot ROM from xiaomi.eu / miuipolska / official.
+   • Use MiFlash with "clean_all" (NOT _and_lock yet).
+   • Verify Android boots, Google Services work.
+   • Check: Settings → About phone → MIUI/HyperOS version.
+
+══════════════════════════════════════════════════════════════
+STEP 2. Reboot to fastboot and lock
+──────────────────────────────────────────────────────────────
+       adb reboot bootloader
+       fastboot oem lock
+
+   ⚠️  This will wipe all data!
+   ⚠️  Screen may say "Press power to confirm" — confirm.
+
+══════════════════════════════════════════════════════════════
+STEP 3. Boot and verify
+──────────────────────────────────────────────────────────────
+   • Phone reboots, runs first-time setup.
+   • Check: Settings → About → Status → Verity → "green/verified"
+   • Play Protect certification should pass within minutes.
+
+══════════════════════════════════════════════════════════════
+
+💡 Difference vs exploit unlock:
+   • Mi Unlock uses Xiaomi AUTHORIZATION (your Mi account).
+   • efisp is untouched, no exploit traces.
+   • So "oem lock" works directly, no dance needed.
+
+⚠️ Note:
+   • Re-unlocking later via Mi Unlock requires another 168+ hour
+     wait on the same Mi account.
+   • Some models (CN ROM) have Mi Unlock disabled — then see
+     the exploit scenario.
+══════════════════════════════════════════════════════════════
+"""
+            else:
+                steps = """
 ✅ ШТАТНАЯ БЛОКИРОВКА (Mi Unlock разлочка):
 
 ══════════════════════════════════════════════════════════════
@@ -1119,12 +1246,20 @@ class App:
             )
 
         gen_batch = gen_batch_exploit if method == "exploit" else gen_batch_mi_unlock
-        batch_label = ("📝 Создать batch для шага 2" if method == "exploit"
-                       else "📝 Создать batch для блокировки")
+        if is_en:
+            batch_label = ("📝 Create batch for step 2" if method == "exploit"
+                           else "📝 Create batch for lock")
+            lessons_label = "📖 Open LESSONS_LEARNED.md"
+            close_label = "Close"
+        else:
+            batch_label = ("📝 Создать batch для шага 2" if method == "exploit"
+                           else "📝 Создать batch для блокировки")
+            lessons_label = "📖 Открыть LESSONS_LEARNED.md"
+            close_label = "Закрыть"
         ttk.Button(btn_bar, text=batch_label, command=gen_batch).pack(side="left")
-        ttk.Button(btn_bar, text="📖 Открыть LESSONS_LEARNED.md",
+        ttk.Button(btn_bar, text=lessons_label,
                    command=self.action_open_lessons).pack(side="left", padx=(8, 0))
-        ttk.Button(btn_bar, text="Закрыть", command=win.destroy).pack(side="right")
+        ttk.Button(btn_bar, text=close_label, command=win.destroy).pack(side="right")
 
     # === 📸 Snapshot — бэкап getvar + token перед опасной операцией ===
     def action_snapshot(self):
@@ -1219,30 +1354,38 @@ class App:
     def _conclusion_block(self, profile, tried_methods):
         """HTML-блок с выводом в отчёте для сервиса."""
         fails = [m for m in tried_methods if m[1] == "FAIL"]
+        is_en = _CURRENT_LANG == "en"
         if not fails:
-            return (
-                '<div class="warning" style="background:#eff6ff;border-left-color:#0284c7">'
-                '<b>Статус:</b> стандартные программные методы доступны. '
-                'Обращение в сервис обычно не требуется, если нет физических повреждений.'
-                '</div>'
+            msg = (
+                "<b>Status:</b> standard programmatic methods are available. "
+                "A service shop is usually not needed unless there is physical damage."
+                if is_en else
+                "<b>Статус:</b> стандартные программные методы доступны. "
+                "Обращение в сервис обычно не требуется, если нет физических повреждений."
             )
-        # Для pandora и подобных — вывод о chip-off
+            return f'<div class="warning" style="background:#eff6ff;border-left-color:#0284c7">{msg}</div>'
         codename = (profile or {}).get("codename", "")
         if codename == "pandora":
-            return (
-                '<div class="warning">'
-                '<b>Вывод:</b> для CNXM ROM (Китай) + заблокированного SM8850 + стёртого efisp '
-                'публичных программных методов восстановления <b>не существует</b>. '
-                'Нужен либо коммерческий сервис с приватным Firehose loader, '
-                'либо физический chip-off ремонт NAND/UFS.'
-                '</div>'
+            msg = (
+                "<b>Conclusion:</b> for CNXM ROM (China) + locked SM8850 + erased efisp, "
+                "<b>no public programmatic recovery exists</b>. "
+                "You need either a commercial service with a private Firehose loader, "
+                "or physical chip-off NAND/UFS repair."
+                if is_en else
+                "<b>Вывод:</b> для CNXM ROM (Китай) + заблокированного SM8850 + стёртого efisp "
+                "публичных программных методов восстановления <b>не существует</b>. "
+                "Нужен либо коммерческий сервис с приватным Firehose loader, "
+                "либо физический chip-off ремонт NAND/UFS."
             )
-        return (
-            '<div class="warning">'
-            f'<b>Вывод:</b> часть программных методов не сработала ({len(fails)}). '
-            'Рекомендую обратиться в сервис с опытом по этой конкретной модели.'
-            '</div>'
+            return f'<div class="warning">{msg}</div>'
+        msg = (
+            f"<b>Conclusion:</b> some programmatic methods did not work ({len(fails)}). "
+            "Recommend a service shop experienced with this specific model."
+            if is_en else
+            f"<b>Вывод:</b> часть программных методов не сработала ({len(fails)}). "
+            "Рекомендую обратиться в сервис с опытом по этой конкретной модели."
         )
+        return f'<div class="warning">{msg}</div>'
 
     # === 🏥 Service Report — HTML отчёт для сервисного центра ===
     def action_service_report(self):
@@ -1296,26 +1439,42 @@ class App:
             cls = f' class="{tag}"' if tag else ""
             return f"<tr><td class='k'>{html.escape(k)}</td><td{cls}>{html.escape(str(v))}</td></tr>"
 
-        # Методы — из профиля, иначе generic fallback
-        if profile and profile.get("tried_methods"):
-            tried_methods = profile["tried_methods"]
+        # Методы — из профиля (с языковым fallback), иначе generic
+        if profile:
+            lang_key = f"tried_methods_{_CURRENT_LANG}"
+            tried_methods = profile.get(lang_key) or profile.get("tried_methods") or []
         else:
-            tried_methods = [
-                ("fastboot getvar", "OK", "Стандартная диагностика"),
-                ("MiFlash", "?", "Стандартный путь прошивки"),
-                ("EDL кабель", "?", "Зависит от доступности Firehose loader"),
-            ]
+            tried_methods = []
+        if not tried_methods:
+            if _CURRENT_LANG == "en":
+                tried_methods = [
+                    ("fastboot getvar", "OK", "Standard diagnostic"),
+                    ("MiFlash", "?", "Standard flash path"),
+                    ("EDL cable", "?", "Depends on Firehose loader availability"),
+                ]
+            else:
+                tried_methods = [
+                    ("fastboot getvar", "OK", "Стандартная диагностика"),
+                    ("MiFlash", "?", "Стандартный путь прошивки"),
+                    ("EDL кабель", "?", "Зависит от доступности Firehose loader"),
+                ]
 
+        is_en = _CURRENT_LANG == "en"
+        lbl_method = "Method" if is_en else "Метод"
+        lbl_price = "Price" if is_en else "Цена"
+        lbl_warranty = "Warranty" if is_en else "Гарантия"
+        lbl_verified = "✓ VERIFIED" if is_en else "✓ ПРОВЕРЕН"
+        lbl_unverified = "not verified" if is_en else "не проверен"
         services_html = ""
         for s in SERVICE_CONTACTS:
-            badge = "✓ ПРОВЕРЕН" if s["proven"] else "не проверен"
+            badge = lbl_verified if s["proven"] else lbl_unverified
             badge_cls = "ok" if s["proven"] else "warn"
             services_html += f"""
             <div class="service">
               <h4>{html.escape(s['name'])} <span class="badge {badge_cls}">{badge}</span></h4>
-              <p><b>Метод:</b> {html.escape(s['method'])}</p>
-              <p><b>Цена:</b> {html.escape(s['price_aznish'])} · <b>Гарантия:</b> {html.escape(s['warranty'])}</p>
-              <p class="notes">{html.escape(s['notes'])}</p>
+              <p><b>{lbl_method}:</b> {html.escape(s['method'])}</p>
+              <p><b>{lbl_price}:</b> {html.escape(service_i18n(s, 'price_aznish'))} · <b>{lbl_warranty}:</b> {html.escape(service_i18n(s, 'warranty'))}</p>
+              <p class="notes">{html.escape(service_i18n(s, 'notes'))}</p>
             </div>"""
 
         rows_html = ""
@@ -1343,7 +1502,7 @@ class App:
         for p in prev_summary:
             prev_html += f"<li><code>{html.escape(p['file'])}</code> — {html.escape(p['time'])} ({p['vars_count']} переменных)</li>"
         if not prev_html:
-            prev_html = "<li><i>Нет предыдущих диагностик</i></li>"
+            prev_html = f"<li><i>{tr('report.no_history')}</i></li>"
 
         # Данные устройства — из профиля либо из переменных
         if profile:
@@ -1365,7 +1524,7 @@ class App:
 <html lang="ru">
 <head>
 <meta charset="UTF-8">
-<title>{html.escape(dev_name)} — Отчёт для сервиса ({ts})</title>
+<title>{html.escape(dev_name)} — {html.escape(tr("report.title"))} ({ts})</title>
 <style>
   body {{ font-family: -apple-system, Segoe UI, Roboto, sans-serif; max-width: 900px;
          margin: 20px auto; padding: 20px; background: #f8fafc; color: #0f172a; }}
@@ -1395,53 +1554,52 @@ class App:
 </head>
 <body>
 
-<h1>📱 Отчёт для сервисного центра</h1>
+<h1>{tr("report.h1")}</h1>
 
 <div class="meta">
-  <h3>Устройство</h3>
+  <h3>{tr("report.device")}</h3>
   <table>
-    <tr><td class="k">Модель</td><td>{html.escape(dev_name)} ({html.escape(dev_models)})</td></tr>
-    <tr><td class="k">Кодовое имя</td><td>{html.escape(dev_codename)}</td></tr>
-    <tr><td class="k">Процессор</td><td>{html.escape(dev_chip)}</td></tr>
-    <tr><td class="k">Хранилище</td><td>{html.escape(dev_storage)} ({html.escape(variables.get("variant", "?"))})</td></tr>
-    <tr><td class="k">Серийный</td><td>{html.escape(serial)}</td></tr>
-    <tr><td class="k">Отчёт сгенерирован</td><td>{datetime.now().strftime("%Y-%m-%d %H:%M:%S")}</td></tr>
+    <tr><td class="k">{tr("report.model")}</td><td>{html.escape(dev_name)} ({html.escape(dev_models)})</td></tr>
+    <tr><td class="k">{tr("report.codename")}</td><td>{html.escape(dev_codename)}</td></tr>
+    <tr><td class="k">{tr("report.processor")}</td><td>{html.escape(dev_chip)}</td></tr>
+    <tr><td class="k">{tr("report.storage")}</td><td>{html.escape(dev_storage)} ({html.escape(variables.get("variant", "?"))})</td></tr>
+    <tr><td class="k">{tr("report.serial")}</td><td>{html.escape(serial)}</td></tr>
+    <tr><td class="k">{tr("report.generated")}</td><td>{datetime.now().strftime("%Y-%m-%d %H:%M:%S")}</td></tr>
   </table>
 </div>
 
-<h2>⚠️ Текущее состояние</h2>
+<h2>{tr("report.state")}</h2>
 <table>
 {rows_html}
 </table>
 
-<h2>❌ Что уже пробовали (программно)</h2>
+<h2>{tr("report.tried")}</h2>
 <table>
-  <tr><th>Метод</th><th>Результат</th><th>Причина</th></tr>
+  <tr><th>{tr("report.col.method")}</th><th>{tr("report.col.result")}</th><th>{tr("report.col.reason")}</th></tr>
   {tried_html}
 </table>
 
 {self._conclusion_block(profile, tried_methods)}
 
-<h2>📞 Проверенные/известные сервисы</h2>
+<h2>{tr("report.services")}</h2>
 {services_html}
 
-<h2>📂 История диагностик</h2>
+<h2>{tr("report.history")}</h2>
 <ul>
 {prev_html}
 </ul>
 
-<h2>💡 Что нужно от мастера</h2>
+<h2>{tr("report.ask_master")}</h2>
 <ol>
-  <li>Опыт с <b>Snapdragon 8 Elite / SM8850</b> и UFS 4.0 конкретно.</li>
-  <li><b>Инфракрасная паяльная станция</b> (не фен) с трафаретом под UFS этой модели.</li>
-  <li><b>Гарантия на пайку</b> минимум 3 месяца.</li>
-  <li>Готовность <b>заменить UFS/CPU</b> если chip-off не удастся (цена заранее).</li>
-  <li>Если возможно — <b>ISP вместо chip-off</b> (меньше риска, но на новых Xiaomi часто недоступно).</li>
+  <li>{tr("report.ask.1")}</li>
+  <li>{tr("report.ask.2")}</li>
+  <li>{tr("report.ask.3")}</li>
+  <li>{tr("report.ask.4")}</li>
+  <li>{tr("report.ask.5")}</li>
 </ol>
 
 <footer>
-  Сгенерировано Pandora Unified 1.1 ·
-  Полный журнал восстановления:
+  {tr("report.footer")}
   <a href="https://github.com/alizaderamil/pandora-unified-toolkit">github.com/alizaderamil/pandora-unified-toolkit</a>
 </footer>
 

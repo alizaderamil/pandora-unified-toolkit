@@ -23,6 +23,15 @@
     "super": 13421772800
   },
   "tried_methods": [
+    ["fastboot getvar / oem device-info", "OK", "Diagnostic works"],
+    ["MiFlash clean_all_and_lock", "FAIL", "Phone does not enter EDL"],
+    ["EDL cable (COM port)", "FAIL", "SM8850 requires signed Firehose loader"],
+    ["TWRP boot", "FAIL", "Verified Boot blocks unsigned images"],
+    ["GBL exploit", "FAIL", "efisp erased + patch closed hole in HyperOS 3.0.304+"],
+    ["UnlockerBL_8EG5_v2 retry", "FAIL", "Requires unlocked bootloader"],
+    ["Public Firehose loaders", "FAIL", "Not published for SM8850"]
+  ],
+  "tried_methods_ru": [
     ["fastboot getvar / oem device-info", "OK", "Диагностика работает"],
     ["MiFlash clean_all_and_lock", "FAIL", "Телефон не входит в EDL"],
     ["EDL кабель (COM port)", "FAIL", "SM8850 требует подписанный Firehose loader"],

@@ -36,5 +36,30 @@
   "msg.limited_features": "   Профиль-зависимые функции (Compare, Lock Wizard) будут ограничены.",
 
   "lock.title.exploit": "✅ ПРАВИЛЬНАЯ ПОСЛЕДОВАТЕЛЬНОСТЬ (эксплойт-разлочка, 3 шага):",
-  "lock.title.mi_unlock": "✅ ШТАТНАЯ БЛОКИРОВКА (Mi Unlock разлочка):"
+  "lock.title.mi_unlock": "✅ ШТАТНАЯ БЛОКИРОВКА (Mi Unlock разлочка):",
+
+  "report.title": "Отчёт для сервиса",
+  "report.h1": "📱 Отчёт для сервисного центра",
+  "report.device": "Устройство",
+  "report.model": "Модель",
+  "report.codename": "Кодовое имя",
+  "report.processor": "Процессор",
+  "report.storage": "Хранилище",
+  "report.serial": "Серийный",
+  "report.generated": "Отчёт сгенерирован",
+  "report.state": "⚠️ Текущее состояние",
+  "report.tried": "❌ Что уже пробовали (программно)",
+  "report.col.method": "Метод",
+  "report.col.result": "Результат",
+  "report.col.reason": "Причина",
+  "report.services": "📞 Проверенные/известные сервисы",
+  "report.history": "📂 История диагностик",
+  "report.ask_master": "💡 Что нужно от мастера",
+  "report.ask.1": "Опыт с этим конкретным чипсетом и типом хранилища.",
+  "report.ask.2": "<b>Инфракрасная паяльная станция</b> (не фен) с трафаретом под корпус этого UFS/eMMC.",
+  "report.ask.3": "<b>Гарантия на пайку</b> минимум 3 месяца.",
+  "report.ask.4": "Готовность <b>заменить UFS/CPU</b> если chip-off не удастся (цена заранее).",
+  "report.ask.5": "Если возможно — <b>ISP вместо chip-off</b> (меньше риска, но на новых Xiaomi часто недоступно).",
+  "report.footer": "Сгенерировано Pandora Unified · Полный журнал восстановления:",
+  "report.no_history": "Нет предыдущих диагностик"
 }

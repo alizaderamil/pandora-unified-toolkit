@@ -9,6 +9,13 @@
   "ota_paths": [],
   "critical_partitions": {},
   "tried_methods": [
+    ["fastboot getvar", "OK", "Standard diagnostic"],
+    ["Mi Unlock Tool (xiaomi.com)", "OK", "Standard path — wait 168+ hours"],
+    ["EDL via 9008 testpoint short", "OK", "SD680 — Firehose publicly available"],
+    ["MiFlash", "OK", "Standard flash"],
+    ["TWRP (orangefox)", "OK", "Available for miel"]
+  ],
+  "tried_methods_ru": [
     ["fastboot getvar", "OK", "Стандартная диагностика"],
     ["Mi Unlock Tool (xiaomi.com)", "OK", "Штатный путь — ждать 168+ часов"],
     ["EDL через 9008 замыкание", "OK", "SD680 — Firehose publicly available"],
