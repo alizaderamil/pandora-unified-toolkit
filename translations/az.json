@@ -61,5 +61,40 @@
   "report.ask.4": "<b>UFS/CPU dəyişməyə</b> hazırlıq əgər chip-off alınmasa (qiymət əvvəldən).",
   "report.ask.5": "Mümkünsə — <b>chip-off yerinə ISP</b> (daha az risk, lakin yeni Xiaomi-lərdə tez-tez əlçatmaz).",
   "report.footer": "Pandora Unified tərəfindən yaradıldı · Tam bərpa jurnalı:",
-  "report.no_history": "Əvvəlki diaqnostika yoxdur"
+  "report.no_history": "Əvvəlki diaqnostika yoxdur",
+
+  "tip.diagnostic": "Bütün fastboot getvar + OEM vəziyyətini oxu və JSON hesabat saxla. [F1]",
+  "tip.ufs_check": "UFS yaddaşın istehsalçısını `variant`-dan təyin et. Auth-free firehose üçün vacibdir. [F2]",
+  "tip.bootfail": ".bin bootfail dump-u səhvlər, versiyalar, boot səbəbləri üçün təhlil et. [F3]",
+  "tip.compare": "Cari bölmə ölçülərini etalon OTA ilə müqayisə et. [F4]",
+  "tip.reports": "unified_reports/ qovluğunu diaqnostika tarixçəsi ilə aç. [F5]",
+  "tip.lock_wizard": "Sənin açılış növü üçün düzgün kilid ardıcıllığını göstər. Vasitənin əsas dəyəri. [F6]",
+  "tip.snapshot": "getvar + OEM + dynamic token zip-ə ehtiyat et. Hər təhlükəli əməliyyatdan ƏVVƏL işə sal. [F7]",
+  "tip.service_report": "Usta üçün müstəqil HTML hesabat yarat. [F8]",
+  "tip.ufs_health": "ADB dd oxuma/yazma benchmark-ı. İlk dəfə baseline saxlayır, sonra müqayisə edir. [F9]",
+  "tip.lessons": "LESSONS_LEARNED.md faylını aç — nələri etməmək qaydaları. [F10]",
+
+  "tip.log.copy": "Bütün logu buferə kopyala [Ctrl+C]",
+  "tip.log.save": "Logu fayla saxla [Ctrl+S]",
+  "tip.log.clear": "Logu təmizlə [Ctrl+L]",
+  "tip.log.support": "Tam support bundle (log + state + reports) zip-ə export et",
+
+  "btn.log.copy": "Kopyala",
+  "btn.log.save": "Saxla",
+  "btn.log.clear": "Təmizlə",
+  "btn.log.support": "📦 Support bundle",
+
+  "wizard.title": "Pandora Unified-ə xoş gəldin",
+  "wizard.subtitle": "Nə etmək istəyirsən?",
+  "wizard.diagnose.title": "Sınıq / ilişib qalmış telefonu diaqnostika et",
+  "wizard.diagnose.body": "Tam fastboot diaqnostikası işə sal və cihazın hansı vəziyyətdə olduğunu gör.",
+  "wizard.lock.title": "Bootloader-i təhlükəsiz kilidlə",
+  "wizard.lock.body": "Sənin açılış metodun üçün Lock Wizard-ı düzgün ardıcıllıqla aç.",
+  "wizard.health.title": "UFS sağlamlığını ölç",
+  "wizard.health.body": "İndi baseline saxla ki, sonra deqradasiyanı izləyə biləsən (məsələn chip-off-dan sonra).",
+  "wizard.backup.title": "Təhlükəli əməliyyatdan əvvəl ehtiyat",
+  "wizard.backup.body": "Prosivkadan və ya kilidlənmədən əvvəl getvar + token + OEM-i təhlükəsiz zip-ə snapshot et.",
+  "wizard.explore.title": "Sadəcə baxmaq",
+  "wizard.explore.body": "Bunu bağla və əsas pəncərəyə keç.",
+  "wizard.dontshow": "Bir daha göstərmə"
 }

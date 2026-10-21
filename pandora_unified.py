@@ -33,11 +33,16 @@ import sys
 import threading
 import time
 import tkinter as tk
+import urllib.request
 import webbrowser
 import zipfile
 from tkinter import ttk, scrolledtext, filedialog, messagebox
 from datetime import datetime
 from pathlib import Path
+
+TOOL_VERSION = "1.3"
+GITHUB_REPO = "alizaderamil/pandora-unified-toolkit"
+GITHUB_RELEASES_API = f"https://api.github.com/repos/{GITHUB_REPO}/releases/latest"
 
 FASTBOOT = r"D:\xiaomi\adb\fastboot.exe"
 ADB = r"D:\xiaomi\adb\adb.exe"
@@ -125,6 +130,58 @@ def service_i18n(service, field):
     """Pick language-aware service field with fallback."""
     lang_key = f"{field}_{_CURRENT_LANG}"
     return service.get(lang_key) or service.get(f"{field}_en") or service.get(field, "")
+
+
+class Tooltip:
+    """Minimal tooltip: shows a popup after hover_delay ms, hides on leave."""
+
+    def __init__(self, widget, text_fn, delay=600):
+        self.widget = widget
+        self.text_fn = text_fn  # callable returning current text (для i18n)
+        self.delay = delay
+        self.tip = None
+        self.after_id = None
+        widget.bind("<Enter>", self._schedule)
+        widget.bind("<Leave>", self._cancel)
+        widget.bind("<ButtonPress>", self._cancel)
+
+    def _schedule(self, _event=None):
+        self._cancel()
+        self.after_id = self.widget.after(self.delay, self._show)
+
+    def _cancel(self, _event=None):
+        if self.after_id:
+            try:
+                self.widget.after_cancel(self.after_id)
+            except Exception:
+                pass
+            self.after_id = None
+        if self.tip:
+            try:
+                self.tip.destroy()
+            except Exception:
+                pass
+            self.tip = None
+
+    def _show(self):
+        try:
+            text = self.text_fn() if callable(self.text_fn) else self.text_fn
+        except Exception:
+            return
+        if not text:
+            return
+        x = self.widget.winfo_rootx() + 20
+        y = self.widget.winfo_rooty() + self.widget.winfo_height() + 4
+        self.tip = tk.Toplevel(self.widget)
+        self.tip.wm_overrideredirect(True)
+        self.tip.wm_geometry(f"+{x}+{y}")
+        self.tip.configure(bg="#1e293b")
+        label = tk.Label(
+            self.tip, text=text, bg="#1e293b", fg="#e2e8f0",
+            font=("Segoe UI", 9), padx=10, pady=6,
+            wraplength=380, justify="left",
+        )
+        label.pack()
 
 
 class DeviceMonitor:
@@ -310,7 +367,7 @@ class App:
     def __init__(self, root):
         self.root = root
         devices_str = " + ".join(sorted(DEVICE_PROFILES.keys()))
-        root.title(f"Pandora Unified 1.2 — Xiaomi diagnostics ({devices_str})")
+        root.title(f"Pandora Unified {TOOL_VERSION} — Xiaomi diagnostics ({devices_str})")
         root.geometry("1200x860")
         root.configure(bg="#0a0f1e")
         self.busy = False
@@ -327,6 +384,123 @@ class App:
         self.device_monitor = DeviceMonitor(self._on_device_state_change)
         self.device_monitor.start()
         root.protocol("WM_DELETE_WINDOW", self._on_close)
+
+        # Проверка обновлений в фоне (не блокирует запуск)
+        threading.Thread(target=self._check_updates, daemon=True).start()
+
+        # First-launch wizard (если ещё не показан)
+        settings = _load_settings()
+        if not settings.get("wizard_shown"):
+            root.after(400, self._show_first_launch_wizard)
+
+    def _show_first_launch_wizard(self):
+        """Welcome wizard — показывается один раз на первом запуске."""
+        win = tk.Toplevel(self.root)
+        win.title(tr("wizard.title"))
+        win.geometry("720x540")
+        win.configure(bg="#0a0f1e")
+        win.transient(self.root)
+        win.grab_set()
+
+        frame = ttk.Frame(win, padding=20)
+        frame.pack(fill="both", expand=True)
+
+        ttk.Label(frame, text=tr("wizard.title"), style="H.TLabel").pack(anchor="w")
+        ttk.Label(frame, text=tr("wizard.subtitle"), style="Sub.TLabel").pack(
+            anchor="w", pady=(2, 16)
+        )
+
+        choices = [
+            ("wizard.diagnose", self.action_diagnostic),
+            ("wizard.lock", self.action_lock_wizard),
+            ("wizard.health", self.action_ufs_health),
+            ("wizard.backup", self.action_snapshot),
+            ("wizard.explore", None),
+        ]
+
+        for key_prefix, action in choices:
+            card = tk.Frame(frame, bg="#1e293b", padx=14, pady=10)
+            card.pack(fill="x", pady=4)
+
+            title_lbl = tk.Label(
+                card, text=tr(f"{key_prefix}.title"),
+                bg="#1e293b", fg="#60a5fa",
+                font=("Segoe UI", 11, "bold"), anchor="w", justify="left",
+            )
+            title_lbl.pack(anchor="w")
+            body_lbl = tk.Label(
+                card, text=tr(f"{key_prefix}.body"),
+                bg="#1e293b", fg="#cbd5e1",
+                font=("Segoe UI", 9), anchor="w", justify="left", wraplength=640,
+            )
+            body_lbl.pack(anchor="w")
+
+            def make_click(a=action):
+                def on_click(_event=None):
+                    win.destroy()
+                    if a:
+                        self.root.after(100, a)
+                return on_click
+
+            handler = make_click()
+            for widget in (card, title_lbl, body_lbl):
+                widget.bind("<Button-1>", handler)
+                widget.configure(cursor="hand2")
+
+        # Checkbox «не показывать больше» + close
+        bottom = ttk.Frame(frame)
+        bottom.pack(fill="x", pady=(14, 0))
+        dontshow_var = tk.BooleanVar(value=True)
+        ttk.Checkbutton(
+            bottom, text=tr("wizard.dontshow"), variable=dontshow_var,
+        ).pack(side="left")
+
+        def close():
+            if dontshow_var.get():
+                settings = _load_settings()
+                settings["wizard_shown"] = True
+                _save_settings(settings)
+            win.destroy()
+
+        ttk.Button(bottom, text="Close", command=close).pack(side="right")
+        win.protocol("WM_DELETE_WINDOW", close)
+
+    def _check_updates(self):
+        """Проверить GitHub Releases на новую версию."""
+        try:
+            req = urllib.request.Request(
+                GITHUB_RELEASES_API,
+                headers={"User-Agent": f"pandora-unified-toolkit/{TOOL_VERSION}"},
+            )
+            with urllib.request.urlopen(req, timeout=5) as resp:
+                data = json.loads(resp.read().decode("utf-8"))
+            latest = data.get("tag_name", "").lstrip("v")
+            if not latest:
+                return
+            if self._version_newer(latest, TOOL_VERSION):
+                url = data.get("html_url", f"https://github.com/{GITHUB_REPO}/releases")
+                # Показать неблокирующее уведомление через after
+                self.root.after(0, lambda: self._announce_update(latest, url))
+        except Exception:
+            # Нет интернета / API rate limited — просто молча
+            pass
+
+    @staticmethod
+    def _version_newer(a, b):
+        """True если версия a новее b (semver-ish)."""
+        try:
+            pa = tuple(int(x) for x in a.split("."))
+            pb = tuple(int(x) for x in b.split("."))
+            return pa > pb
+        except Exception:
+            return False
+
+    def _announce_update(self, latest, url):
+        """Показать уведомление о новой версии в лог + в status."""
+        self.write("", "")
+        self.write(f"🎉 New version available: {latest} (you have {TOOL_VERSION})", "hdr")
+        self.write(f"   {url}", "ok")
+        self.status.set(f"Update available: v{latest}. See log tab.")
 
     def _on_close(self):
         if self.device_monitor:
@@ -383,6 +557,13 @@ class App:
             right, text="— ", command=self._on_reboot_click, state="disabled",
         )
         self.reboot_btn.pack(side="right")
+        Tooltip(
+            self.reboot_btn,
+            lambda: {
+                "to_fastboot": "Reboot phone from Android to Fastboot (bootloader mode)",
+                "to_android": "Reboot phone from Fastboot to Android",
+            }.get(self.reboot_mode, "No device connected"),
+        )
 
         # Текущая роль кнопки: None | "to_fastboot" | "to_android"
         self.reboot_mode = None
@@ -461,7 +642,7 @@ class App:
         ttk.Label(header, text="Pandora Unified", style="H.TLabel").pack(side="left")
         devices_list = ", ".join(f"{p['codename']}" for p in DEVICE_PROFILES.values())
         self.subtitle_var = tk.StringVar(
-            value=tr("app.subtitle", devices=devices_list) + "  ·  v1.2"
+            value=tr("app.subtitle", devices=devices_list) + "  ·  v1.3"
         )
         ttk.Label(header, textvariable=self.subtitle_var,
                   style="Sub.TLabel").pack(side="left", padx=(14, 0), pady=(10, 0))
@@ -523,6 +704,8 @@ class App:
             b.pack(side="left", padx=(0, 6))
             self.buttons.append(b)
             self.button_keys.append((b, key, mode))
+            tip_key = key.replace("btn.", "tip.")
+            Tooltip(b, lambda k=tip_key: tr(k))
 
         # Кнопки — ряд 2 (защита + сервис + здоровье)
         btn_frame2 = ttk.Frame(main)
@@ -541,6 +724,8 @@ class App:
             b.pack(side="left", padx=(0, 6))
             self.buttons.append(b)
             self.button_keys.append((b, key, mode))
+            tip_key = key.replace("btn.", "tip.")
+            Tooltip(b, lambda k=tip_key: tr(k))
 
         # Статус-бар
         self.status = tk.StringVar(value=tr("status.ready"))
@@ -556,6 +741,23 @@ class App:
         log_frame = ttk.Frame(self.notebook)
         self.notebook.add(log_frame, text=tr("tab.log"))
         self.log_tab_idx = 0
+
+        # Mini-тулбар для лога: Copy / Save / Clear / Support bundle
+        log_toolbar = ttk.Frame(log_frame)
+        log_toolbar.pack(fill="x", pady=(4, 2), padx=4)
+
+        self.log_action_btns = []
+        for key, cmd, tip_key in [
+            ("btn.log.copy", self._copy_log, "tip.log.copy"),
+            ("btn.log.save", self._save_log, "tip.log.save"),
+            ("btn.log.clear", self._clear_log, "tip.log.clear"),
+            ("btn.log.support", self.action_support_bundle, "tip.log.support"),
+        ]:
+            b = ttk.Button(log_toolbar, text=tr(key), command=cmd)
+            b.pack(side="left", padx=(0, 4))
+            Tooltip(b, lambda k=tip_key: tr(k))
+            self.log_action_btns.append((b, key))
+
         self.log = scrolledtext.ScrolledText(log_frame, bg="#141b2d", fg="#e2e8f0",
                                              font=("Consolas", 9), insertbackground="#e2e8f0",
                                              wrap="word", state="disabled", relief="flat", bd=0)
@@ -587,6 +789,49 @@ class App:
                                                   font=("Consolas", 9), wrap="word",
                                                   state="disabled", relief="flat", bd=0)
         self.bf_text.pack(fill="both", expand=True)
+
+        # Keyboard shortcuts: F1-F10 для 10 кнопок, Ctrl+L/C/S для лога
+        self._bind_keyboard_shortcuts()
+
+    def _bind_keyboard_shortcuts(self):
+        """Привязка клавиатурных сочетаний."""
+        # F1-F10 → 10 кнопок по порядку
+        for i, btn in enumerate(self.buttons[:10]):
+            key = f"<F{i+1}>"
+            self.root.bind(key, lambda e, b=btn: b.invoke())
+
+        self.root.bind("<Control-l>", lambda e: self._clear_log())
+        self.root.bind("<Control-L>", lambda e: self._clear_log())
+        self.root.bind("<Control-c>", lambda e: self._copy_log())
+        self.root.bind("<Control-C>", lambda e: self._copy_log())
+        self.root.bind("<Control-s>", lambda e: self._save_log())
+        self.root.bind("<Control-S>", lambda e: self._save_log())
+
+    def _clear_log(self):
+        self.log.configure(state="normal")
+        self.log.delete("1.0", "end")
+        self.log.configure(state="disabled")
+        self.status.set("Log cleared.")
+
+    def _copy_log(self):
+        text = self.log.get("1.0", "end-1c")
+        self.root.clipboard_clear()
+        self.root.clipboard_append(text)
+        self.root.update()
+        self.status.set(f"Log copied to clipboard ({len(text)} chars).")
+
+    def _save_log(self):
+        text = self.log.get("1.0", "end-1c")
+        ts = datetime.now().strftime("%Y%m%d-%H%M%S")
+        path = filedialog.asksaveasfilename(
+            title="Save log",
+            defaultextension=".txt",
+            initialfile=f"pandora_log_{ts}.txt",
+            filetypes=[("Text", "*.txt"), ("All files", "*.*")],
+        )
+        if path:
+            Path(path).write_text(text, encoding="utf-8")
+            self.status.set(f"Log saved: {Path(path).name}")
 
     def _on_lang_change(self, event=None):
         """Переключение языка."""
@@ -670,9 +915,11 @@ class App:
         """Обновить тексты кнопок, статуса, вкладок после смены языка."""
         for btn, key, mode in self.button_keys:
             btn.configure(text=self._btn_text(key, mode))
+        for btn, key in getattr(self, "log_action_btns", []):
+            btn.configure(text=tr(key))
         self.status.set(tr("status.ready"))
         devices_list = ", ".join(f"{p['codename']}" for p in DEVICE_PROFILES.values())
-        self.subtitle_var.set(tr("app.subtitle", devices=devices_list) + "  ·  v1.2")
+        self.subtitle_var.set(tr("app.subtitle", devices=devices_list) + "  ·  v1.3")
         try:
             self.notebook.tab(self.log_tab_idx, text=tr("tab.log"))
             self.notebook.tab(self.state_tab_idx, text=tr("tab.state"))
@@ -1121,6 +1368,71 @@ class App:
     def action_open_reports(self):
         REPORTS.mkdir(parents=True, exist_ok=True)
         os.startfile(str(REPORTS))
+
+    # === 📦 Support bundle — всё для Issues/мастеров в один zip ===
+    def action_support_bundle(self):
+        self.run_async(self._do_support_bundle)
+
+    def _do_support_bundle(self):
+        self.status.set("Building support bundle…")
+        self.write("", "")
+        self.write("═══ SUPPORT BUNDLE ═══", "hdr")
+
+        REPORTS.mkdir(parents=True, exist_ok=True)
+        ts = datetime.now().strftime("%Y%m%d-%H%M%S")
+        bundle_path = REPORTS / f"support_bundle_{ts}.zip"
+
+        included = []
+        with zipfile.ZipFile(bundle_path, "w", zipfile.ZIP_DEFLATED) as zf:
+            # Лог целиком
+            log_text = self.log.get("1.0", "end-1c")
+            zf.writestr("current_log.txt", log_text.encode("utf-8"))
+            included.append("current_log.txt")
+
+            # Device state
+            state_summary = {
+                "time": datetime.now().isoformat(),
+                "monitor_state": self.current_device_state,
+                "profile": self.device_profile,
+                "manual_override": self.manual_device_override,
+                "lang": _CURRENT_LANG,
+                "profiles_loaded": sorted(DEVICE_PROFILES.keys()),
+            }
+            zf.writestr(
+                "device_state.json",
+                json.dumps(state_summary, ensure_ascii=False, indent=2).encode("utf-8"),
+            )
+            included.append("device_state.json")
+
+            # Все files из unified_reports (кроме других bundles — не вкладываем zip в zip)
+            for p in REPORTS.rglob("*"):
+                if p.is_file() and p.name != bundle_path.name:
+                    if p.suffix == ".zip" and "support_bundle" in p.name:
+                        continue
+                    try:
+                        rel = p.relative_to(REPORTS)
+                        zf.write(p, arcname=f"reports/{rel.as_posix()}")
+                        included.append(f"reports/{rel.as_posix()}")
+                    except Exception as e:
+                        self.write(f"  Skip {p.name}: {e}", "warn")
+
+            # Version info
+            version_info = {
+                "tool_version": "1.3",
+                "python": sys.version,
+                "platform": sys.platform,
+            }
+            zf.writestr(
+                "version.json",
+                json.dumps(version_info, indent=2).encode("utf-8"),
+            )
+            included.append("version.json")
+
+        self.write(f"✓ Bundle created: {bundle_path.name}", "ok")
+        self.write(f"  Size: {bundle_path.stat().st_size / 1024:.1f} KB")
+        self.write(f"  Files included: {len(included)}")
+        self.write("  Attach this zip to a GitHub issue or send to a technician.", "ok")
+        self.status.set(f"Bundle: {bundle_path.name} ({bundle_path.stat().st_size / 1024:.0f} KB)")
 
     # === Открыть LESSONS_LEARNED.md ===
     def action_open_lessons(self):
