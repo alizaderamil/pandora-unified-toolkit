@@ -1,9 +1,9 @@
-> **Review update (2026-10-21):** Lock Wizard is now a read-only reference; batch generation has been removed. Historical relock recipes, certification promises and lifespan estimates below are unverified and must not be used as instructions. See [review and remaining issues](docs/REVIEW-2026-10-21.md).
+> **Review update (2026-10-21):** Lock Wizard is now a read-only reference; batch generation has been removed. The repair history has been corrected against the owner-provided correspondence; completion remains unconfirmed. See [review and remaining issues](docs/REVIEW-2026-10-21.md).
 
 # Pandora Unified — Xiaomi Diagnostics & Recovery Toolkit
 
-> Open-source GUI tool for diagnosing, backing up, and safely locking/unlocking Xiaomi phones.
-> Born from a real chip-off recovery of a Xiaomi 17 Pro — captures the lessons the hard way.
+> Open-source GUI tool for Xiaomi diagnostics, diagnostic snapshots and relock reference information.
+> Developed during investigation of a Xiaomi 17 Pro boot failure after relocking.
 
 **🌍 Languages:** English · [Русский](README.ru.md)
 **🔧 Platform:** Windows (uses Xiaomi's fastboot/adb binaries bundled in `adb/`)
@@ -15,13 +15,11 @@
 
 The main window with a Redmi Note 11 auto-detected via `fastboot getvar product`.
 
-![Lock Wizard — exploit mode](docs/images/lock-wizard.png)
-
-The Lock Wizard in exploit mode explains the **correct** 3-step sequence to re-lock a bootloader that was unlocked via exploit. The red block documents the mistake that bricked the original pandora.
+The Lock Wizard now displays read-only reference information. The former procedural screenshot is omitted because it no longer represents the interface.
 
 ![UFS Health benchmark](docs/images/ufs-health.png)
 
-UFS Health runs an `adb shell dd` benchmark, saves a per-device baseline on first run, and warns if speed drops >20% on later runs — useful for tracking pairing deterioration after chip-off repair.
+UFS Health runs an `adb shell dd` benchmark, saves a per-device baseline on first run, and warns if speed drops >20% on later runs — a performance comparison, not a diagnosis of solder joints or remaining lifespan.
 
 ![Service Center Report](docs/images/service-report.png)
 
@@ -33,11 +31,11 @@ The service report generates a self-contained HTML with device state, methods al
 
 ## Why this exists
 
-In October 2026 a Xiaomi 17 Pro China (codename `pandora`) was bricked by running `fastboot erase efisp` + `fastboot oem lock` after an exploit-based unlock. Every public tool failed. Recovery required chip-off NAND desoldering at a repair shop (300 AZN, 6 months warranty on the solder — but 2-3 years off the phone's lifespan).
+On 15 October 2026, a Xiaomi 17 Pro China (`pandora`) stopped booting after the assistant executed `fastboot erase efisp` and `fastboot oem lock`. Both returned `OKAY`. The subsequent log showed unbootable slots; the full cause was not established.
 
-**This tool packages everything we learned so it doesn't happen to someone else.**
+On 21 October the owner agreed to a repair quote of **300 AZN**, with an estimate of **up to two days**. The technician discussed possible UFS/processor removal and planned HyperOS 3 with a locked bootloader. Completion, the actual repair method, warranty terms and the installed version have not been confirmed by the owner.
 
-The underlying mistake — that `fastboot oem lock` alone does NOT re-lock after an exploit unlock — is documented nowhere else as a public tool. See [LESSONS_LEARNED.md](LESSONS_LEARNED.md).
+The technician recommended a full official reflash with locking after erasing efisp, rather than the direct lock performed here. This is an attributed recommendation, not a procedure verified by this project. See [the corrected incident record](LESSONS_LEARNED.md).
 
 ## Features
 
@@ -46,11 +44,11 @@ The underlying mistake — that `fastboot oem lock` alone does NOT re-lock after
 | **Full diagnostic** | Reads all `fastboot getvar` + `oem` state, saves JSON report |
 | **UFS check** | Detects storage vendor (critical for auth-free firehose compatibility) |
 | **Bootfail analysis** | Parses `.bin` bootfail dumps for boot errors, versions, boot reasons |
-| **Compare with firmware** | Verifies partition sizes against a known-good OTA zip |
-| **🔒 Lock Wizard** | Shows the CORRECT lock sequence for your unlock method (exploit vs Mi Unlock) — the public internet gets this wrong |
+| **Compare with firmware** | Compares partition sizes with profile constants; does not verify OTA contents |
+| **🔒 Lock Wizard** | Read-only relock reference; no lock or erase scripts |
 | **📸 Snapshot** | One-click backup of `getvar all`, OEM dumps, dynamic token to a zip — run BEFORE any risky op |
 | **🏥 Service report** | Self-contained HTML for a repair technician: device state, methods tried, services |
-| **📊 UFS Health** | ADB-based `dd` read/write benchmark. First run = baseline. Later runs compare and warn if speed drops >20% (useful after chip-off repair) |
+| **📊 UFS Health** | ADB-based `dd` read/write benchmark. First run = baseline. Later runs compare and warn if speed drops >20% (not a solder-health or lifespan assessment) |
 
 ## Supported devices
 
@@ -124,20 +122,20 @@ Target devices we'd love profiles for:
 This tool CANNOT:
 - Perform EDL/firehose flashing (no signed loaders published)
 - Unlock a locked bootloader (that's done via Mi Unlock Tool or an exploit)
-- Un-brick a phone with corrupted UFS/NAND (that needs chip-off service)
+- Determine or repair physical UFS/NAND damage
 
 It CAN:
 - Diagnose what state your phone is in
-- Prevent you from making the mistake that bricked ours
+- Document the incident and limitations of the diagnostic evidence
 - Give you a professional report to hand to a repair shop
-- Track UFS health over time
+- Compare storage benchmark measurements over time
 
 **Everything is at your own risk.** Backing up before any risky operation is on you — the Snapshot button helps but is not a substitute for a TWRP full backup when possible.
 
 ## Credits
 
 - Original device-recovery timeline, lessons, and tool authorship: @alizaderamil
-- The Mobil Hafiz telefon servisi (Baku, Azerbaijan) who performed the actual chip-off recovery and shared the correct lock sequence
+- The repair technician consulted by the owner, who supplied a quote and a relock recommendation; repair completion is not yet confirmed
 - Development collaboration with Claude Code
 
 ## Links

@@ -2,14 +2,18 @@
   "name": "Mobil Hafiz telefon servisi",
   "city": "Baku",
   "country": "Azerbaijan",
-  "method": "Chip-off NAND/UFS/eMMC",
-  "proven": true,
-  "price_en": "250-400 AZN (~$150-250, depends on model)",
-  "price_ru": "250-400 AZN (~$150-250, зависит от модели)",
-  "warranty_en": "6 months",
-  "warranty_ru": "6 месяцев",
-  "notes_en": "Successfully recovered pandora on 2026-10-21 after exploit-lock brick. Infrared station. Confirmed experience with Snapdragon 8 Elite.",
-  "notes_ru": "Успешно восстановил pandora 2026-10-21 после exploit-lock кирпича. Инфракрасная станция. Опыт с Snapdragon 8 Elite подтверждён.",
+  "method": "UFS/processor removal discussed; actual repair method unconfirmed",
+  "proven": false,
+  "price_en": "300 AZN quoted for this case on 2026-10-21",
+  "price_ru": "300 AZN согласовано для этого случая 21.10.2026",
+  "warranty_en": "Not specified in the provided correspondence",
+  "warranty_ru": "В предоставленной переписке не указана",
+  "notes_en": "Repair agreed; estimate up to two days. Technician plans HyperOS 3 with a locked bootloader. Completion and final firmware version are not confirmed by the owner.",
+  "notes_ru": "Ремонт согласован, срок до двух дней. План мастера — HyperOS 3 с закрытым загрузчиком. Завершение и итоговая версия прошивки владельцем не подтверждены.",
   "contact": "WhatsApp recommended",
-  "covers": ["xiaomi", "redmi", "poco"]
+  "covers": [
+    "xiaomi",
+    "redmi",
+    "poco"
+  ]
 }
